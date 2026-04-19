@@ -499,9 +499,23 @@ function renderWorkoutPicker() {
     </div>`;
 }
 
+function getLastUsed(exerciseName) {
+  for (let i = state.savedWorkouts.length - 1; i >= 0; i--) {
+    const ex = (state.savedWorkouts[i].exercises || []).find(e =>
+      e.name === exerciseName && e.completed && e.weight
+    );
+    if (ex) return { weight: ex.weight, reps: ex.actualReps };
+  }
+  return null;
+}
+
 function renderExerciseCard(ex) {
   const log = state.logs[ex.id] || {};
   const done = log.completed;
+  const last = ex.type === 'strength' ? getLastUsed(ex.name) : null;
+
+  // Pre-fill weight from last session if not already entered this session
+  const weightVal = log.weight || (last ? last.weight : '');
 
   let inputsHtml = '';
   if (ex.type === 'cardio') {
@@ -528,8 +542,12 @@ function renderExerciseCard(ex) {
     inputsHtml = `
       <div class="ex-sets-label">Hold: ${ex.suggestedReps}</div>`;
   } else {
+    const lastHint = last
+      ? `<div style="font-size:11px;color:var(--purple-light);margin-bottom:6px;">↩ Last time: ${last.weight} lbs${last.reps ? ' × ' + last.reps + ' reps' : ''}</div>`
+      : '';
     inputsHtml = `
       <div class="ex-sets-label">${ex.sets} sets · Target: ${ex.suggestedReps} reps</div>
+      ${lastHint}
       <div class="ex-inputs">
         <div class="ex-input-group">
           <label>Reps Done</label>
@@ -538,7 +556,7 @@ function renderExerciseCard(ex) {
         </div>
         <div class="ex-input-group">
           <label>Weight (lbs)</label>
-          <input type="number" min="0" placeholder="lbs" value="${log.weight||''}"
+          <input type="number" min="0" placeholder="${last ? last.weight + ' lbs' : 'lbs'}" value="${weightVal}"
             oninput="updateLog('${ex.id}','weight',this.value)">
         </div>
       </div>`;
