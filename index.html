@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d0d0d">
+  <title>PF Tracker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #1a1a1a;
+      --surface2: #242424;
+      --purple: #7c3aed;
+      --purple-light: #a78bfa;
+      --yellow: #fbbf24;
+      --text: #f1f1f1;
+      --muted: #888;
+      --border: #2e2e2e;
+      --must-color: #7c3aed;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --cardio: #0ea5e9;
+      --stretch: #10b981;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; }
+
+    /* ── LAYOUT ── */
+    #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    #hdr { background: var(--surface); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    #hdr-title { font-size: 18px; font-weight: 700; color: var(--purple-light); letter-spacing: -0.3px; }
+    #hdr-timer { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--yellow); background: #1f1a00; padding: 4px 12px; border-radius: 20px; }
+    #hdr-sync { font-size: 12px; color: var(--muted); }
+    #main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 0 8px; }
+    #nav { background: var(--surface); border-top: 1px solid var(--border); display: flex; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
+    .nav-btn { flex: 1; background: none; border: none; color: var(--muted); padding: 10px 0 6px; font-size: 10px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color .15s; }
+    .nav-btn .nav-ico { font-size: 20px; }
+    .nav-btn.active { color: var(--purple-light); }
+    .nav-btn.active .nav-ico { filter: drop-shadow(0 0 4px var(--purple)); }
+
+    /* ── SHARED ── */
+    .section { padding: 16px; }
+    .section-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 12px; }
+    .card { background: var(--surface); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; border: 1px solid var(--border); }
+    .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: .5px; }
+    .badge-must { background: var(--purple); color: #fff; }
+    .badge-optional { background: #2a2a2a; color: var(--muted); }
+    .badge-snowboard { background: #0c3352; color: #7dd3fc; }
+    .badge-cardio { background: #0c2840; color: #7dd3fc; }
+    .badge-stretch { background: #063a2a; color: #6ee7b7; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: opacity .15s, transform .1s; }
+    .btn:active { transform: scale(.97); opacity: .9; }
+    .btn-primary { background: var(--purple); color: #fff; width: 100%; }
+    .btn-secondary { background: var(--surface2); color: var(--text); width: 100%; border: 1px solid var(--border); }
+    .btn-success { background: var(--success); color: #fff; width: 100%; }
+    .btn-sm { padding: 7px 14px; font-size: 13px; }
+    input[type="number"], input[type="text"], textarea {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+      padding: 8px 10px; font-size: 14px; width: 100%; outline: none;
+    }
+    input[type="number"]:focus, input[type="text"]:focus, textarea:focus { border-color: var(--purple); }
+    input[type="number"] { text-align: center; }
+
+    /* ── HOME TAB ── */
+    .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .week-day { background: var(--surface2); border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 11px; }
+    .week-day .day-lbl { color: var(--muted); font-size: 10px; margin-bottom: 4px; }
+    .week-day .day-type { font-weight: 700; font-size: 11px; }
+    .week-day.today { background: var(--purple); }
+    .week-day.today .day-lbl { color: #c4b5fd; }
+    .today-box { background: linear-gradient(135deg, #1e0a3c, #0d0d0d); border: 1px solid var(--purple); border-radius: var(--radius); padding: 18px; margin-bottom: 10px; }
+    .today-box h2 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+    .today-box .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+    .start-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .start-card { background: var(--surface); border-radius: 12px; padding: 14px; text-align: center; cursor: pointer; border: 2px solid var(--border); transition: border-color .15s; }
+    .start-card:active { border-color: var(--purple); }
+    .start-card .sc-icon { font-size: 28px; margin-bottom: 6px; }
+    .start-card .sc-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .start-card .sc-days { font-size: 11px; color: var(--muted); }
+    .last-workout { background: var(--surface); border-radius: var(--radius); padding: 14px; border: 1px solid var(--border); }
+    .lw-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .lw-label { font-size: 12px; color: var(--muted); }
+    .lw-value { font-size: 13px; font-weight: 600; }
+
+    /* ── WORKOUT TAB ── */
+    .workout-header { padding: 14px 16px 10px; position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--border); }
+    .wh-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .wh-name { font-size: 17px; font-weight: 800; }
+    .must-toggle { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--muted); }
+    .must-toggle.on { background: #1e0a3c; border-color: var(--purple); color: var(--purple-light); }
+    .progress-bar { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--purple); border-radius: 2px; transition: width .3s; }
+    .ex-card { background: var(--surface); border-radius: var(--radius); padding: 14px; margin: 10px 12px; border: 1px solid var(--border); transition: border-color .2s; }
+    .ex-card.completed { border-color: var(--success); opacity: .7; }
+    .ex-card.must-card { border-left: 3px solid var(--purple); }
+    .ex-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .ex-icon { font-size: 28px; flex-shrink: 0; }
+    .ex-info { flex: 1; }
+    .ex-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+    .ex-muscle { font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+    .ex-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+    .ex-sets-label { font-size: 12px; color: var(--muted); margin: 8px 0 6px; }
+    .ex-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .ex-input-group { display: flex; flex-direction: column; gap: 4px; }
+    .ex-input-group label { font-size: 11px; color: var(--muted); text-align: center; }
+    .ex-tip { font-size: 12px; color: var(--muted); background: var(--surface2); padding: 8px 10px; border-radius: 8px; line-height: 1.5; margin-bottom: 10px; }
+    .ex-check-btn { width: 100%; padding: 9px; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; background: var(--surface2); color: var(--muted); transition: background .15s, color .15s; }
+    .ex-check-btn.done { background: var(--success); color: #fff; }
+    .finish-area { padding: 16px; }
+
+    /* ── FINISH MODAL ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 100; display: flex; align-items: flex-end; }
+    .modal-sheet { background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; width: 100%; max-height: 80vh; overflow-y: auto; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+    .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .effort-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+    .effort-btn { font-size: 28px; background: var(--surface2); border: 2px solid var(--border); border-radius: 12px; padding: 10px 14px; cursor: pointer; transition: border-color .15s, transform .1s; }
+    .effort-btn:active { transform: scale(.9); }
+    .effort-btn.selected { border-color: var(--yellow); background: #1f1a00; }
+    .notes-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .save-btn { margin-top: 16px; }
+    .sync-msg { text-align: center; font-size: 12px; margin-top: 10px; padding: 6px; border-radius: 8px; }
+    .sync-ok { background: #063a2a; color: #6ee7b7; }
+    .sync-err { background: #3a0606; color: #fca5a5; }
+    .sync-pending { background: #1a1a0a; color: var(--yellow); }
+
+    /* ── MACHINES TAB ── */
+    .machines-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+    .machine-card { background: var(--surface); border-radius: var(--radius); padding: 12px; border: 1px solid var(--border); cursor: pointer; transition: border-color .15s; }
+    .machine-card:active { border-color: var(--purple-light); }
+    .mc-icon { font-size: 32px; text-align: center; margin-bottom: 8px; }
+    .mc-name { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+    .mc-category { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+    .mc-use { font-size: 11px; color: var(--purple-light); }
+    .machine-detail { padding: 16px; }
+    .md-icon { font-size: 48px; text-align: center; margin-bottom: 12px; }
+    .md-name { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+    .md-muscle { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+    .md-use { font-size: 14px; color: var(--purple-light); font-weight: 600; margin-bottom: 12px; }
+    .md-tip { font-size: 13px; line-height: 1.6; color: var(--text); background: var(--surface2); padding: 12px; border-radius: 10px; }
+    .back-btn { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--purple-light); cursor: pointer; margin-bottom: 16px; background: none; border: none; padding: 0; }
+
+    /* ── LOG TAB ── */
+    .log-entry { background: var(--surface); border-radius: var(--radius); padding: 14px; margin: 10px 12px; border: 1px solid var(--border); cursor: pointer; }
+    .le-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .le-plan { font-size: 15px; font-weight: 700; }
+    .le-date { font-size: 12px; color: var(--muted); }
+    .le-meta { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+    .le-chip { font-size: 11px; color: var(--muted); background: var(--surface2); padding: 3px 8px; border-radius: 6px; }
+    .le-exercises { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .le-ex { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .le-ex:last-child { border-bottom: none; }
+    .le-ex-name { color: var(--muted); }
+    .le-ex-data { color: var(--text); font-weight: 600; }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+    /* ── STATS TAB ── */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .stat-box { background: var(--surface); border-radius: var(--radius); padding: 14px; text-align: center; border: 1px solid var(--border); }
+    .stat-value { font-size: 28px; font-weight: 800; color: var(--purple-light); }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .chart-container { background: var(--surface); border-radius: var(--radius); padding: 14px; border: 1px solid var(--border); margin-bottom: 10px; }
+    .chart-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px; }
+    .select-input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 13px; width: 100%; margin-bottom: 12px; }
+    canvas { max-height: 200px; }
+
+    /* ── MISC ── */
+    .off-day-list { padding: 0 12px; }
+    .no-workout-box { padding: 24px 12px; }
+    .nwb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .nwb-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px 12px; text-align: center; cursor: pointer; transition: border-color .2s; }
+    .nwb-card:active { border-color: var(--purple); }
+    .nwb-icon { font-size: 32px; margin-bottom: 8px; }
+    .nwb-name { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+    .nwb-days { font-size: 11px; color: var(--muted); }
+    .nwb-off { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header id="hdr">
+    <div id="hdr-title">💪 PF Tracker</div>
+    <div id="hdr-right" style="display:flex;align-items:center;gap:8px;">
+      <div id="hdr-timer" style="display:none"></div>
+      <div id="hdr-sync"></div>
+    </div>
+  </header>
+  <main id="main"></main>
+  <nav id="nav">
+    <button class="nav-btn active" onclick="setTab('home')" id="nav-home"><span class="nav-ico">🏠</span>Home</button>
+    <button class="nav-btn" onclick="setTab('workout')" id="nav-workout"><span class="nav-ico">🏋️</span>Workout</button>
+    <button class="nav-btn" onclick="setTab('machines')" id="nav-machines"><span class="nav-ico">📋</span>Machines</button>
+    <button class="nav-btn" onclick="setTab('log')" id="nav-log"><span class="nav-ico">📓</span>Log</button>
+    <button class="nav-btn" onclick="setTab('stats')" id="nav-stats"><span class="nav-ico">📈</span>Stats</button>
+  </nav>
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbysLIZGlH3OD7YVQZoZpKD3jDaEWM5s80oaMX53lZjLjQ0pPbbhIABJA_7jMAHcPho/exec';
+
+// ============================================================
+// WORKOUT DATA
+// ============================================================
+const WORKOUTS = {
+  A: {
+    name: 'Day A — Upper Body',
+    shortName: 'Day A',
+    icon: '💪',
+    scheduledDays: 'Mon / Thu',
+    exercises: [
+      { id:'a-stair-warmup', name:'Stair Stepper Warmup', type:'cardio', suggestedTime:5, must:true, muscle:'Cardio / Full Body', tip:'Start easy, build pace after 2 min. Warms joints and elevates heart rate before lifting.', emoji:'🪜' },
+      { id:'a-chest-press', name:'Seated Chest Press', type:'strength', sets:3, suggestedReps:'10–12', must:true, muscle:'Chest / Front Delts / Triceps', tip:"Adjust seat so handles align with mid-chest. Elbows slightly below shoulders. Don't lock out at top. Slow return.", emoji:'🤜' },
+      { id:'a-pec-deck', name:'Pec Deck / Cable Fly', type:'strength', sets:2, suggestedReps:'12', must:false, muscle:'Chest (inner)', tip:'Squeeze pecs at center. Slow controlled return. Great isolation after the press.', emoji:'🤲' },
+      { id:'a-shoulder-press', name:'Seated Shoulder Press', type:'strength', sets:3, suggestedReps:'10', must:true, muscle:'Shoulders / Triceps', tip:"Keep core tight. Don't arch lower back. Stop just before full lockout. Adjust seat so handles are at ear height.", emoji:'🙆' },
+      { id:'a-face-pull', name:'Cable Face Pull', type:'strength', sets:3, suggestedReps:'12–15', must:true, muscle:'Rear Delts / Rotator Cuff', tip:'CRITICAL for long-term shoulder health. Use rope attachment, pull to forehead with elbows high. Light weight, perfect form — never ego-lift this one.', emoji:'🎯' },
+      { id:'a-lat-pulldown', name:'Lat Pulldown', type:'strength', sets:3, suggestedReps:'10–12', must:true, muscle:'Lats / Biceps', tip:'Wide grip, pull bar to upper chest. Lean back 10–15 degrees. Feel the lats engaging, not just biceps pulling.', emoji:'⬇️' },
+      { id:'a-seated-row', name:'Seated Row', type:'strength', sets:3, suggestedReps:'10–12', must:true, muscle:'Mid Back / Biceps', tip:"Sit tall. Pull elbows straight back, squeeze shoulder blades together at end. Don't round forward on the return.", emoji:'🚣' },
+      { id:'a-rear-delt', name:'Rear Delt Fly (Reverse Pec Deck)', type:'strength', sets:2, suggestedReps:'12–15', must:false, muscle:'Rear Delts / Upper Back', tip:'Reverse the pec deck machine. Arms go from front to sides. Light weight, high control. Builds the back of your shoulder.', emoji:'🦅' },
+      { id:'a-tricep', name:'Tricep Pushdown', type:'strength', sets:2, suggestedReps:'10–12', must:false, muscle:'Triceps', tip:'Keep elbows locked at sides. Full extension at bottom. Slow return. Rope or straight bar attachment both work.', emoji:'↕️' },
+      { id:'a-bicep', name:'Bicep Curl Machine', type:'strength', sets:2, suggestedReps:'10–12', must:false, muscle:'Biceps', tip:'Full range of motion. Slow lowering phase. Keep upper arms on the pad throughout.', emoji:'💪' },
+      { id:'a-ab-crunch', name:'Ab Crunch Machine', type:'strength', sets:3, suggestedReps:'15–20', must:true, muscle:'Core / Abs', tip:"Slow and controlled — don't use momentum. Round forward at the top and hold 1 second. This ends every workout.", emoji:'🔩' },
+      { id:'a-torso-rotation', name:'Torso Rotation Machine', type:'strength', sets:2, suggestedReps:'15 each side', must:false, muscle:'Obliques / Rotational Core', tip:"Controlled rotation only. Great for spinal health and snowboard balance. Don't rush this one.", emoji:'🔄' },
+      { id:'a-plank', name:'Plank (Mat)', type:'timed', sets:3, suggestedReps:'30–45 sec', must:false, muscle:'Full Core', tip:"Body in a straight line head to heel. Squeeze glutes and abs. Don't let hips sag. 30 seconds is more than enough when done right.", emoji:'🧱' },
+      { id:'a-stair-cooldown', name:'Stair Stepper Cooldown', type:'cardio', suggestedTime:10, must:false, muscle:'Cardio / Recovery', tip:'Go as long as you can. Reduce intensity the last 2 minutes. Build toward 15–20 min over time.', emoji:'🪜' }
+    ]
+  },
+  B: {
+    name: 'Day B — Lower Body',
+    shortName: 'Day B',
+    icon: '🦵',
+    scheduledDays: 'Wed / Sat',
+    exercises: [
+      { id:'b-stair-warmup', name:'Stair Stepper Warmup', type:'cardio', suggestedTime:5, must:true, muscle:'Cardio / Full Body', tip:'Light pace for 5 min. Gets blood into the legs before loading them.', emoji:'🪜' },
+      { id:'b-leg-press', name:'Leg Press', type:'strength', sets:3, suggestedReps:'10–12', must:true, muscle:'Quads / Hamstrings / Glutes', tip:"Don't lock out knees at top. Feet shoulder-width. Lower until knees reach 90°. This is your biggest lower body lift.", emoji:'🦵' },
+      { id:'b-leg-extension', name:'Leg Extension', type:'strength', sets:3, suggestedReps:'12', must:true, muscle:'Quadriceps', tip:'Pause 1 second at full extension. Slow lowering phase. Protects the knee over time when done with control.', emoji:'🦵' },
+      { id:'b-leg-curl', name:'Seated Leg Curl', type:'strength', sets:3, suggestedReps:'12', must:true, muscle:'Hamstrings', tip:'Full range of motion. Squeeze at bottom. Slow controlled return. Hamstrings protect the knee — do not skip.', emoji:'🦵' },
+      { id:'b-hip-abduction', name:'Hip Abduction (Legs Apart)', type:'strength', sets:3, suggestedReps:'15', must:true, muscle:'Outer Hips / Glutes', tip:'Pads on outside of knees, push outward. Builds lateral hip stability — critical for snowboarding and injury prevention.', emoji:'↔️' },
+      { id:'b-hip-adduction', name:'Hip Adduction (Legs Together)', type:'strength', sets:3, suggestedReps:'15', must:true, muscle:'Inner Thigh / Groin', tip:'Same machine, reverse direction. Pads on inside of knees, squeeze together. Directly addresses the groin area you mentioned.', emoji:'↔️' },
+      { id:'b-calf-raise', name:'Calf Raises (Stair Edge)', type:'strength', sets:3, suggestedReps:'15–20', must:false, snowboard:true, muscle:'Calves / Ankle Stability', tip:'🏂 Snowboard specific. Stand on edge of step, full range up and down. Slow descent to the bottom. Builds ankle stability.', emoji:'🦶' },
+      { id:'b-tibialis', name:'Tibialis Raises (Toe Lifts)', type:'strength', sets:3, suggestedReps:'15', must:false, snowboard:true, muscle:'Shin / Ankle (front side)', tip:'🏂 Snowboard specific. Lean against wall, heels on floor, lift toes up. The most neglected ankle exercise. Prevents rolls and falls.', emoji:'🦶' },
+      { id:'b-back-ext', name:'Back Extension', type:'strength', sets:2, suggestedReps:'12–15', must:false, muscle:'Lower Back / Glutes', tip:"Don't hyperextend at top — go to neutral spine only. Arms crossed on chest. Great for lower back health as you age.", emoji:'🔙' },
+      { id:'b-ab-crunch', name:'Ab Crunch Machine', type:'strength', sets:3, suggestedReps:'15–20', must:true, muscle:'Core / Abs', tip:"Slow and controlled. Round forward at top, hold 1 second. Don't use momentum. Core work ends every session.", emoji:'🔩' },
+      { id:'b-knee-raise', name:"Hanging Knee Raises (Captain's Chair)", type:'strength', sets:3, suggestedReps:'10–15', must:false, muscle:'Lower Abs / Hip Flexors', tip:'Arms on pads, hang free, pull knees to chest. Slow lowering. Excellent lower core builder — better than planks for functional strength.', emoji:'🧗' },
+      { id:'b-torso-rotation', name:'Torso Rotation Machine', type:'strength', sets:2, suggestedReps:'15 each side', must:false, muscle:'Obliques / Core', tip:'Controlled rotation. Builds rotational core strength. Pays off on the snowboard.', emoji:'🔄' },
+      { id:'b-stair-cooldown', name:'Stair Stepper Cooldown', type:'cardio', suggestedTime:10, must:true, muscle:'Cardio / Recovery', tip:'You earned it. Go as long as you can. Build to 15–20 min over weeks.', emoji:'🪜' }
+    ]
+  },
+  OFF: {
+    name: 'Off Day — Active Recovery',
+    shortName: 'Off Day',
+    icon: '🧘',
+    scheduledDays: 'Tue / Fri / Sun',
+    exercises: [
+      { id:'off-rowing', name:'Home Rowing', type:'cardio', suggestedTime:20, must:false, muscle:'Full Body / Active Recovery', tip:'Moderate pace only — this is recovery, not a workout. Keeps blood moving to sore muscles. 20 min at conversational effort.', emoji:'🚣' },
+      { id:'off-hip-flexor', name:'Hip Flexor Stretch', type:'stretch', suggestedReps:'30 sec each side', must:true, muscle:'Hip Flexors', tip:"Lunge position, back knee down. Lean forward into the stretch. Critical if you sit at a desk — tight hip flexors affect everything.", emoji:'🧘' },
+      { id:'off-chest-stretch', name:'Chest Opener Stretch', type:'stretch', suggestedReps:'30 sec', must:true, muscle:'Chest / Front Shoulders', tip:'Clasp hands behind back, lift chest up and out. Counteracts all the chest press work. Do this daily if possible.', emoji:'🧘' },
+      { id:'off-hamstring', name:'Hamstring Stretch', type:'stretch', suggestedReps:'30 sec each side', must:true, muscle:'Hamstrings', tip:"Seated or standing — don't bounce. Hold steady at edge of discomfort. Protects your lower back when these stay flexible.", emoji:'🧘' },
+      { id:'off-calf-stretch', name:'Calf / Ankle Stretch', type:'stretch', suggestedReps:'30 sec each side', must:false, snowboard:true, muscle:'Calves / Ankles', tip:'🏂 Snowboard specific. Lean into wall, heel flat on floor. Also try slow ankle circles — 10 each direction each foot.', emoji:'🧘' },
+      { id:'off-shoulder-stretch', name:'Shoulder Cross-Body Stretch', type:'stretch', suggestedReps:'30 sec each side', must:false, muscle:'Rear Delts / Upper Back', tip:'Pull arm across chest with opposite hand. Hold at slight discomfort. Helps shoulder recovery after Day A.', emoji:'🧘' }
+    ]
+  }
+};
+
+const MACHINES = [
+  { name:'Stair Stepper', category:'Cardio', muscle:'Legs / Core / Cardiovascular', use:'5–20 min warmup or cooldown', tip:"Start at level 6–8. Hands lightly on rails — don't lean on them or you cheat the workout. Build duration over weeks.", emoji:'🪜' },
+  { name:'Rowing Machine', category:'Cardio', muscle:'Full Body (legs drive 60% of power)', use:'20 min moderate pace on off days', tip:"Sequence: push with legs → lean back → pull arms. Never reverse that order. Keep back tall, don't round forward.", emoji:'🚣' },
+  { name:'Seated Chest Press', category:'Upper Body', muscle:'Chest / Front Delts / Triceps', use:'3 sets × 10–12 reps', tip:"Adjust seat height so handles align with mid-chest. Elbows slightly below shoulder height. Don't slam the weights back.", emoji:'🤜' },
+  { name:'Pec Deck / Cable Fly', category:'Upper Body', muscle:'Chest (inner / isolation)', use:'2 sets × 12 reps', tip:"Squeeze at center for 1 second. Slow return. Also reverses into Rear Delt Fly — same machine, different direction.", emoji:'🤲' },
+  { name:'Seated Shoulder Press', category:'Upper Body', muscle:'Deltoids / Triceps', use:'3 sets × 10 reps', tip:"Seat adjusted so handles start at ear height. Core tight. Don't arch lower back to push the weight.", emoji:'🙆' },
+  { name:'Cable Station', category:'Upper Body', muscle:'Rear Delts / Triceps / Lats (varies by attachment)', use:'Face Pull: 3×12–15 | Pushdown: 2×10–12', tip:'Face pull: rope attachment at forehead height, elbows high — builds rotator cuff. Pushdown: rope or bar at waist height, elbows at sides.', emoji:'🎯' },
+  { name:'Lat Pulldown', category:'Upper Body', muscle:'Latissimus Dorsi / Biceps', use:'3 sets × 10–12 reps', tip:"Wide grip, pull bar to upper chest. Lean back 10–15 degrees. Think 'elbows to hips' to feel the lats working.", emoji:'⬇️' },
+  { name:'Seated Row', category:'Upper Body', muscle:'Mid Back / Rhomboids / Biceps', use:'3 sets × 10–12 reps', tip:"Sit tall, pull elbows straight back, squeeze shoulder blades together at the end. Don't round forward on the way out.", emoji:'🚣' },
+  { name:'Bicep Curl Machine', category:'Upper Body', muscle:'Biceps', use:'2 sets × 10–12 reps', tip:'Full range of motion. Slow lowering phase. Keep upper arms flat on the pad throughout the rep.', emoji:'💪' },
+  { name:'Leg Press', category:'Lower Body', muscle:'Quads / Hamstrings / Glutes', use:'3 sets × 10–12 reps', tip:"Feet shoulder-width at mid-pad. Lower until knees reach 90°. Don't lock knees at top. This is your biggest lower body exercise.", emoji:'🦵' },
+  { name:'Leg Extension', category:'Lower Body', muscle:'Quadriceps', use:'3 sets × 12 reps', tip:'Pause 1 second at full extension. Slow lowering. Done with control, this protects the knee. Done with momentum, it stresses it.', emoji:'🦵' },
+  { name:'Seated Leg Curl', category:'Lower Body', muscle:'Hamstrings', use:'3 sets × 12 reps', tip:'Full range of motion. Slow return. Strong hamstrings are the #1 protector of the knee joint.', emoji:'🦵' },
+  { name:'Hip Abduction / Adduction', category:'Lower Body', muscle:'Outer Hips, Glutes / Inner Thigh, Groin', use:'3 sets × 15 reps each direction', tip:"One machine, two exercises. Pads outside = legs apart (outer hips). Pads inside = legs together (groin). Do both every B day — especially important for snowboarding.", emoji:'↔️' },
+  { name:'Calf Raise Machine', category:'Lower Body', muscle:'Gastrocnemius / Soleus', use:'3 sets × 15–20 reps (or use stair edge)', tip:'Full range — all the way up and all the way down. Slow descent. Can also do this on the edge of a stair step.', emoji:'🦶' },
+  { name:'Ab Crunch Machine', category:'Core', muscle:'Rectus Abdominis', use:'3 sets × 15–20 reps', tip:"Slow crunch — don't use momentum or throw your head forward. Round your back as you compress. Hold 1 second at the bottom.", emoji:'🔩' },
+  { name:'Torso Rotation Machine', category:'Core', muscle:'Obliques / Rotational Core', use:'2 sets × 15 reps each side', tip:'Controlled rotation, not momentum. This builds the rotational strength that matters for snowboarding and everyday movement.', emoji:'🔄' },
+  { name:"Captain's Chair", category:'Core', muscle:'Lower Abs / Hip Flexors', use:'3 sets × 10–15 reps', tip:"Arms on the pads, back flat against the pad. Pull knees toward chest. Slow lowering. Don't swing.", emoji:'🧗' },
+  { name:'Back Extension', category:'Core', muscle:'Erector Spinae / Glutes', use:'2 sets × 12–15 reps', tip:"Go to neutral spine at the top — not hyperextended. Arms crossed on chest. Keeps your lower back healthy as you age.", emoji:'🔙' }
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  tab: 'home',
+  activeDay: null,         // 'A' | 'B' | 'OFF'
+  workoutStartTime: null,
+  timerInterval: null,
+  timerPaused: false,
+  timerElapsed: 0,
+  logs: {},                // { exerciseId: { reps, weight, time, completed } }
+  mustDoOnly: false,
+  showFinishModal: false,
+  effortRating: null,
+  notes: '',
+  expandedLog: null,       // index of expanded log entry
+  machineDetail: null,     // machine object
+  statsExercise: '',
+  savedWorkouts: loadWorkouts()
+};
+
+function loadWorkouts() {
+  try { return JSON.parse(localStorage.getItem('pf_workouts') || '[]'); }
+  catch(e) { return []; }
+}
+function saveWorkoutsLocal() {
+  try { localStorage.setItem('pf_workouts', JSON.stringify(state.savedWorkouts)); } catch(e) {}
+}
+
+// ============================================================
+// TIMER
+// ============================================================
+function startTimer() {
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.workoutStartTime = Date.now() - (state.timerElapsed * 1000);
+  state.timerInterval = setInterval(() => {
+    state.timerElapsed = Math.floor((Date.now() - state.workoutStartTime) / 1000);
+    updateTimerDisplay();
+  }, 1000);
+}
+function stopTimer() {
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = null;
+}
+function formatTime(secs) {
+  const m = Math.floor(secs / 60).toString().padStart(2,'0');
+  const s = (secs % 60).toString().padStart(2,'0');
+  return `${m}:${s}`;
+}
+function updateTimerDisplay() {
+  const el = document.getElementById('hdr-timer');
+  if (!el) return;
+  if (state.activeDay) {
+    el.style.display = 'block';
+    el.textContent = formatTime(state.timerElapsed);
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function setTab(tab) {
+  state.tab = tab;
+  state.machineDetail = null;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const navBtn = document.getElementById('nav-' + tab);
+  if (navBtn) navBtn.classList.add('active');
+  render();
+}
+
+// ============================================================
+// MAIN RENDER
+// ============================================================
+function render() {
+  const main = document.getElementById('main');
+  switch (state.tab) {
+    case 'home':    main.innerHTML = renderHome(); break;
+    case 'workout': main.innerHTML = renderWorkout(); break;
+    case 'machines':main.innerHTML = renderMachines(); break;
+    case 'log':     main.innerHTML = renderLog(); break;
+    case 'stats':   main.innerHTML = renderStats(); break;
+  }
+  if (state.tab === 'stats') initCharts();
+  updateTimerDisplay();
+  if (state.showFinishModal) {
+    document.body.insertAdjacentHTML('beforeend', renderFinishModal());
+  }
+}
+
+// ============================================================
+// HOME TAB
+// ============================================================
+function getTodaySchedule() {
+  const dow = new Date().getDay(); // 0=Sun
+  const map = { 0:'OFF', 1:'A', 2:'OFF', 3:'B', 4:'OFF', 5:'A', 6:'B' };
+  return map[dow] || 'OFF';
+}
+function getDayLabel(dow) {
+  const map = { 0:'Sun', 1:'Mon', 2:'Tue', 3:'Wed', 4:'Thu', 5:'Fri', 6:'Sat' };
+  return map[dow];
+}
+function getDayType(dow) {
+  const map = { 0:'OFF', 1:'A', 2:'OFF', 3:'B', 4:'OFF', 5:'A', 6:'B' };
+  return map[dow];
+}
+
+function renderHome() {
+  const today = new Date().getDay();
+  const todayPlan = getTodaySchedule();
+  const last = state.savedWorkouts[state.savedWorkouts.length - 1];
+  const totalSessions = state.savedWorkouts.length;
+  const thisWeek = state.savedWorkouts.filter(w => {
+    const d = new Date(w.date);
+    const now = new Date();
+    const diff = (now - d) / (1000*60*60*24);
+    return diff < 7;
+  }).length;
+
+  let weekHtml = '';
+  for (let d = 1; d <= 7; d++) {
+    const dow = d % 7;
+    const type = getDayType(dow);
+    const isToday = dow === today;
+    const icon = type === 'A' ? '💪' : type === 'B' ? '🦵' : '🧘';
+    weekHtml += `<div class="week-day ${isToday?'today':''}">
+      <div class="day-lbl">${getDayLabel(dow)}</div>
+      <div class="day-type">${icon}<br>${type}</div>
+    </div>`;
+  }
+
+  const lastHtml = last ? `
+    <div class="section-title">Last Workout</div>
+    <div class="last-workout">
+      <div class="lw-row"><span class="lw-label">Date</span><span class="lw-value">${new Date(last.date).toLocaleDateString()}</span></div>
+      <div class="lw-row"><span class="lw-label">Plan</span><span class="lw-value">${last.plan === 'OFF' ? 'Off Day' : 'Day ' + last.plan}</span></div>
+      <div class="lw-row"><span class="lw-label">Duration</span><span class="lw-value">${last.duration} min</span></div>
+      <div class="lw-row"><span class="lw-label">Effort</span><span class="lw-value">${['','😴','🙂','😤','🔥','💀'][last.effort] || '—'}</span></div>
+    </div>` : '';
+
+  const todayW = WORKOUTS[todayPlan];
+  return `
+    <div class="section">
+      <div class="section-title">This Week</div>
+      <div class="week-grid" style="margin-bottom:16px">${weekHtml}</div>
+
+      <div class="today-box">
+        <h2>${todayW.icon} Today: ${todayPlan === 'OFF' ? 'Off Day' : 'Day ' + todayPlan}</h2>
+        <div class="sub">${todayW.name} · ${todayW.scheduledDays}</div>
+        <button class="btn btn-primary" onclick="startWorkout('${todayPlan}')">▶ Start Today's Workout</button>
+      </div>
+
+      <div class="section-title">Quick Start</div>
+      <div class="start-row" style="margin-bottom:16px">
+        ${Object.entries(WORKOUTS).map(([key, w]) => `
+          <div class="start-card" onclick="startWorkout('${key}')">
+            <div class="sc-icon">${w.icon}</div>
+            <div class="sc-name">${w.shortName}</div>
+            <div class="sc-days">${w.scheduledDays}</div>
+          </div>`).join('')}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div class="stat-box"><div class="stat-value">${totalSessions}</div><div class="stat-label">Total Sessions</div></div>
+        <div class="stat-box"><div class="stat-value">${thisWeek}</div><div class="stat-label">This Week</div></div>
+      </div>
+
+      ${lastHtml}
+    </div>`;
+}
+
+// ============================================================
+// WORKOUT TAB
+// ============================================================
+function startWorkout(day) {
+  state.activeDay = day;
+  state.logs = {};
+  state.mustDoOnly = false;
+  state.timerElapsed = 0;
+  startTimer();
+  setTab('workout');
+}
+
+function renderWorkout() {
+  if (!state.activeDay) return renderWorkoutPicker();
+  const W = WORKOUTS[state.activeDay];
+  const exercises = W.exercises.filter(e => !state.mustDoOnly || e.must);
+  const completed = exercises.filter(e => state.logs[e.id]?.completed).length;
+  const pct = exercises.length ? Math.round(completed / exercises.length * 100) : 0;
+
+  return `
+    <div class="workout-header">
+      <div class="wh-top">
+        <div class="wh-name">${W.icon} ${W.shortName}</div>
+        <button class="must-toggle ${state.mustDoOnly?'on':''}" onclick="toggleMustDo()">
+          ${state.mustDoOnly ? '⭐ Must-Do Only' : '☆ Full Workout'}
+        </button>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:${pct}%"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px;">${completed} of ${exercises.length} done · ${pct}%</div>
+    </div>
+
+    ${exercises.map(ex => renderExerciseCard(ex)).join('')}
+
+    <div class="finish-area">
+      <button class="btn btn-success" onclick="openFinishModal()">🏁 Finish Workout</button>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="cancelWorkout()">✕ Cancel</button>
+    </div>`;
+}
+
+function renderWorkoutPicker() {
+  return `
+    <div class="no-workout-box">
+      <div class="section-title">Choose a Workout</div>
+      <div class="nwb-grid">
+        ${Object.entries(WORKOUTS).map(([key, w]) => `
+          <div class="nwb-card ${key==='OFF'?'nwb-off':''}" onclick="startWorkout('${key}')">
+            <div class="nwb-icon">${w.icon}</div>
+            <div class="nwb-name">${w.name}</div>
+            <div class="nwb-days">${w.scheduledDays}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderExerciseCard(ex) {
+  const log = state.logs[ex.id] || {};
+  const done = log.completed;
+
+  let inputsHtml = '';
+  if (ex.type === 'cardio') {
+    inputsHtml = `
+      <div class="ex-sets-label">Suggested: ${ex.suggestedTime} min</div>
+      <div class="ex-inputs" style="grid-template-columns:1fr">
+        <div class="ex-input-group">
+          <label>Time (min)</label>
+          <input type="number" min="0" placeholder="${ex.suggestedTime}" value="${log.time||''}"
+            oninput="updateLog('${ex.id}','time',this.value)">
+        </div>
+      </div>`;
+  } else if (ex.type === 'timed') {
+    inputsHtml = `
+      <div class="ex-sets-label">${ex.sets} sets · Suggested: ${ex.suggestedReps}</div>
+      <div class="ex-inputs" style="grid-template-columns:1fr">
+        <div class="ex-input-group">
+          <label>Duration / Notes</label>
+          <input type="text" placeholder="${ex.suggestedReps}" value="${log.reps||''}"
+            oninput="updateLog('${ex.id}','reps',this.value)">
+        </div>
+      </div>`;
+  } else if (ex.type === 'stretch') {
+    inputsHtml = `
+      <div class="ex-sets-label">Hold: ${ex.suggestedReps}</div>`;
+  } else {
+    inputsHtml = `
+      <div class="ex-sets-label">${ex.sets} sets · Target: ${ex.suggestedReps} reps</div>
+      <div class="ex-inputs">
+        <div class="ex-input-group">
+          <label>Reps Done</label>
+          <input type="number" min="0" placeholder="${ex.suggestedReps.split('–')[0]}" value="${log.reps||''}"
+            oninput="updateLog('${ex.id}','reps',this.value)">
+        </div>
+        <div class="ex-input-group">
+          <label>Weight (lbs)</label>
+          <input type="number" min="0" placeholder="lbs" value="${log.weight||''}"
+            oninput="updateLog('${ex.id}','weight',this.value)">
+        </div>
+      </div>`;
+  }
+
+  const typeBadge = ex.type === 'cardio' ? '<span class="badge badge-cardio">Cardio</span>'
+    : ex.type === 'stretch' ? '<span class="badge badge-stretch">Stretch</span>' : '';
+  const mustBadge = ex.must ? '<span class="badge badge-must">Must Do</span>' : '<span class="badge badge-optional">Optional</span>';
+  const snowBadge = ex.snowboard ? '<span class="badge badge-snowboard">🏂 Snowboard</span>' : '';
+
+  return `
+    <div class="ex-card ${done?'completed':''} ${ex.must?'must-card':''}" id="card-${ex.id}">
+      <div class="ex-header">
+        <div class="ex-icon">${ex.emoji}</div>
+        <div class="ex-info">
+          <div class="ex-name">${done ? '✓ ' : ''}${ex.name}</div>
+          <div class="ex-muscle">${ex.muscle}</div>
+          <div class="ex-badges">${mustBadge}${typeBadge}${snowBadge}</div>
+        </div>
+      </div>
+      ${inputsHtml}
+      <div class="ex-tip">💡 ${ex.tip}</div>
+      <button class="ex-check-btn ${done?'done':''}" onclick="toggleExerciseDone('${ex.id}')">
+        ${done ? '✓ Completed' : 'Mark Done'}
+      </button>
+    </div>`;
+}
+
+// ============================================================
+// EXERCISE / WORKOUT ACTIONS
+// ============================================================
+function updateLog(id, field, value) {
+  if (!state.logs[id]) state.logs[id] = {};
+  state.logs[id][field] = value;
+}
+
+function toggleExerciseDone(id) {
+  if (!state.logs[id]) state.logs[id] = {};
+  state.logs[id].completed = !state.logs[id].completed;
+  render();
+  document.getElementById('card-'+id)?.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+function toggleMustDo() {
+  state.mustDoOnly = !state.mustDoOnly;
+  render();
+}
+
+function cancelWorkout() {
+  if (!confirm('Cancel workout? Progress will be lost.')) return;
+  stopTimer();
+  state.activeDay = null;
+  state.timerElapsed = 0;
+  state.logs = {};
+  render();
+}
+
+function openFinishModal() {
+  stopTimer();
+  state.showFinishModal = true;
+  state.effortRating = null;
+  state.notes = '';
+  render();
+}
+
+function closeFinishModal() {
+  state.showFinishModal = false;
+  startTimer();
+  render();
+}
+
+function setEffort(n) {
+  state.effortRating = n;
+  document.querySelectorAll('.effort-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('effort-'+n)?.classList.add('selected');
+}
+
+function renderFinishModal() {
+  const emojis = ['','😴','🙂','😤','🔥','💀'];
+  const labels = ['','Easy','Good','Hard','Beast','💀 Max'];
+  return `
+    <div class="modal-overlay" onclick="if(event.target===this)closeFinishModal()">
+      <div class="modal-sheet">
+        <div class="modal-title">💾 Save Workout</div>
+        <div class="modal-sub">Duration: ${formatTime(state.timerElapsed)}</div>
+
+        <div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600;">How was your effort?</div>
+        <div class="effort-row">
+          ${[1,2,3,4,5].map(n => `
+            <button class="effort-btn ${state.effortRating===n?'selected':''}" id="effort-${n}" onclick="setEffort(${n})" title="${labels[n]}">
+              ${emojis[n]}
+            </button>`).join('')}
+        </div>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:-8px;margin-bottom:16px">
+          ${state.effortRating ? labels[state.effortRating] : 'Tap to rate'}
+        </div>
+
+        <div class="notes-label">Notes (optional)</div>
+        <textarea rows="2" placeholder="e.g. Shoulder felt tight, increased chest press..."
+          oninput="state.notes=this.value" style="margin-bottom:0">${state.notes}</textarea>
+
+        <div class="save-btn">
+          <button class="btn btn-success" onclick="saveWorkout()">✓ Save to Log</button>
+        </div>
+        <button class="btn btn-secondary" style="margin-top:8px" onclick="closeFinishModal()">← Keep Going</button>
+        <div id="sync-status"></div>
+      </div>
+    </div>`;
+}
+
+async function saveWorkout() {
+  const W = WORKOUTS[state.activeDay];
+  const exercises = W.exercises.filter(e => state.logs[e.id]);
+  const workout = {
+    date: new Date().toISOString(),
+    plan: state.activeDay,
+    duration: Math.round(state.timerElapsed / 60),
+    effort: state.effortRating || 0,
+    notes: state.notes,
+    exercises: exercises.map(ex => {
+      const log = state.logs[ex.id] || {};
+      return {
+        name: ex.name,
+        type: ex.type,
+        sets: ex.sets || null,
+        suggestedReps: ex.suggestedReps || ex.suggestedTime || null,
+        actualReps: log.reps || null,
+        weight: log.weight || null,
+        time: log.time || null,
+        completed: log.completed || false
+      };
+    })
+  };
+
+  state.savedWorkouts.push(workout);
+  saveWorkoutsLocal();
+
+  // Sync to Google Sheets
+  const syncEl = document.getElementById('sync-status');
+  if (syncEl) { syncEl.className='sync-msg sync-pending'; syncEl.textContent='☁️ Syncing to Google Sheets...'; }
+
+  try {
+    const resp = await fetch(SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(workout)
+    });
+    if (syncEl) { syncEl.className='sync-msg sync-ok'; syncEl.textContent='✓ Saved to Google Sheets'; }
+  } catch(e) {
+    if (syncEl) { syncEl.className='sync-msg sync-err'; syncEl.textContent='⚠ Sheets sync failed — saved locally'; }
+  }
+
+  // Reset after save
+  setTimeout(() => {
+    state.showFinishModal = false;
+    state.activeDay = null;
+    state.timerElapsed = 0;
+    state.logs = {};
+    setTab('log');
+  }, 1500);
+}
+
+// ============================================================
+// MACHINES TAB
+// ============================================================
+function renderMachines() {
+  if (state.machineDetail) return renderMachineDetail(state.machineDetail);
+
+  const categories = [...new Set(MACHINES.map(m => m.category))];
+  return categories.map(cat => `
+    <div class="section">
+      <div class="section-title">${cat}</div>
+      <div class="machines-grid">
+        ${MACHINES.filter(m => m.category === cat).map((m, i) => {
+          const idx = MACHINES.indexOf(m);
+          return `<div class="machine-card" onclick="showMachineDetail(${idx})">
+            <div class="mc-icon">${m.emoji}</div>
+            <div class="mc-name">${m.name}</div>
+            <div class="mc-category">${m.muscle}</div>
+            <div class="mc-use">${m.use}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function showMachineDetail(idx) {
+  state.machineDetail = MACHINES[idx];
+  render();
+}
+
+function renderMachineDetail(m) {
+  return `
+    <div class="machine-detail">
+      <button class="back-btn" onclick="state.machineDetail=null;render()">← All Machines</button>
+      <div class="md-icon">${m.emoji}</div>
+      <div class="md-name">${m.name}</div>
+      <div class="md-muscle">${m.muscle}</div>
+      <div class="md-use">📋 ${m.use}</div>
+      <div class="md-tip">${m.tip}</div>
+    </div>`;
+}
+
+// ============================================================
+// LOG TAB
+// ============================================================
+function renderLog() {
+  if (!state.savedWorkouts.length) {
+    return `<div class="empty-state">
+      <div class="empty-icon">📓</div>
+      <div>No workouts logged yet.</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--muted)">Start your first workout!</div>
+    </div>`;
+  }
+
+  const entries = [...state.savedWorkouts].reverse();
+  return '<div style="padding-bottom:16px">' +
+    entries.map((w, i) => {
+      const idx = state.savedWorkouts.length - 1 - i;
+      const isExpanded = state.expandedLog === idx;
+      const planName = w.plan === 'OFF' ? 'Off Day' : `Day ${w.plan}`;
+      const icon = WORKOUTS[w.plan]?.icon || '🏋️';
+      const efmoji = ['','😴','🙂','😤','🔥','💀'][w.effort] || '';
+      const exDone = (w.exercises||[]).filter(e => e.completed);
+
+      return `<div class="log-entry" onclick="toggleLogEntry(${idx})">
+        <div class="le-top">
+          <div class="le-plan">${icon} ${planName}</div>
+          <div class="le-date">${new Date(w.date).toLocaleDateString()}</div>
+        </div>
+        <div class="le-meta">
+          <span class="le-chip">⏱ ${w.duration||0} min</span>
+          ${efmoji ? `<span class="le-chip">${efmoji} Effort ${w.effort}</span>` : ''}
+          <span class="le-chip">${exDone.length} exercises</span>
+          ${w.notes ? `<span class="le-chip">📝 Note</span>` : ''}
+        </div>
+        ${isExpanded ? `
+          <div class="le-exercises">
+            ${w.notes ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-style:italic">"${w.notes}"</div>` : ''}
+            ${(w.exercises||[]).filter(e=>e.completed).map(e => `
+              <div class="le-ex">
+                <span class="le-ex-name">${e.name}</span>
+                <span class="le-ex-data">${
+                  e.weight ? `${e.weight}lbs × ${e.actualReps||'?'} reps` :
+                  e.time ? `${e.time} min` :
+                  e.actualReps ? `${e.actualReps} reps` : '✓'
+                }</span>
+              </div>`).join('')}
+          </div>` : ''}
+      </div>`;
+    }).join('') + '</div>';
+}
+
+function toggleLogEntry(idx) {
+  state.expandedLog = state.expandedLog === idx ? null : idx;
+  render();
+}
+
+// ============================================================
+// STATS TAB
+// ============================================================
+function renderStats() {
+  const workouts = state.savedWorkouts;
+  if (!workouts.length) {
+    return `<div class="empty-state">
+      <div class="empty-icon">📈</div>
+      <div>No data yet.</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--muted)">Stats appear after your first workout.</div>
+    </div>`;
+  }
+
+  const totalMin = workouts.reduce((a,w) => a+(w.duration||0), 0);
+  const avgDur = Math.round(totalMin / workouts.length);
+  const avgEffort = workouts.filter(w=>w.effort).length
+    ? (workouts.filter(w=>w.effort).reduce((a,w)=>a+w.effort,0) / workouts.filter(w=>w.effort).length).toFixed(1) : '—';
+
+  // Get all logged strength exercises
+  const allExercises = [...new Set(
+    workouts.flatMap(w => (w.exercises||[]).filter(e=>e.weight && e.completed).map(e=>e.name))
+  )].sort();
+
+  if (!state.statsExercise && allExercises.length) state.statsExercise = allExercises[0];
+
+  const selectOptions = allExercises.map(e =>
+    `<option value="${e}" ${state.statsExercise===e?'selected':''}>${e}</option>`
+  ).join('');
+
+  return `
+    <div class="section">
+      <div class="section-title">Overview</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-value">${workouts.length}</div><div class="stat-label">Sessions</div></div>
+        <div class="stat-box"><div class="stat-value">${avgDur}</div><div class="stat-label">Avg Min</div></div>
+        <div class="stat-box"><div class="stat-value">${totalMin}</div><div class="stat-label">Total Min</div></div>
+        <div class="stat-box"><div class="stat-value">${avgEffort}</div><div class="stat-label">Avg Effort</div></div>
+      </div>
+
+      <div class="chart-container">
+        <div class="chart-title">Sessions per Week</div>
+        <canvas id="chart-sessions"></canvas>
+      </div>
+
+      ${allExercises.length ? `
+        <div class="chart-container">
+          <div class="chart-title">Weight Progress</div>
+          <select class="select-input" onchange="state.statsExercise=this.value;render()">${selectOptions}</select>
+          <canvas id="chart-weight"></canvas>
+        </div>` : ''}
+
+      <div class="chart-container">
+        <div class="chart-title">Workout Duration</div>
+        <canvas id="chart-duration"></canvas>
+      </div>
+    </div>`;
+}
+
+function initCharts() {
+  const workouts = state.savedWorkouts;
+  if (!workouts.length) return;
+
+  // Sessions per week
+  const weekMap = {};
+  workouts.forEach(w => {
+    const d = new Date(w.date);
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - ((d.getDay()+6)%7));
+    const key = monday.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    weekMap[key] = (weekMap[key]||0) + 1;
+  });
+  const weekKeys = Object.keys(weekMap).slice(-8);
+
+  const ctx1 = document.getElementById('chart-sessions');
+  if (ctx1) {
+    if (Chart.getChart(ctx1)) Chart.getChart(ctx1).destroy();
+    new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: weekKeys,
+        datasets: [{ data: weekKeys.map(k=>weekMap[k]), backgroundColor:'#7c3aed', borderRadius:6 }]
+      },
+      options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1,color:'#888'},grid:{color:'#222'}},x:{ticks:{color:'#888'},grid:{color:'#222'}}}}
+    });
+  }
+
+  // Weight progress for selected exercise
+  if (state.statsExercise) {
+    const pts = workouts.flatMap(w =>
+      (w.exercises||[]).filter(e=>e.name===state.statsExercise && e.weight && e.completed)
+        .map(e => ({ date: new Date(w.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}), weight: parseFloat(e.weight) }))
+    );
+    const ctx2 = document.getElementById('chart-weight');
+    if (ctx2 && pts.length) {
+      if (Chart.getChart(ctx2)) Chart.getChart(ctx2).destroy();
+      new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: pts.map(p=>p.date),
+          datasets: [{ data: pts.map(p=>p.weight), borderColor:'#a78bfa', backgroundColor:'rgba(124,58,237,.15)', fill:true, tension:.3, pointRadius:4, pointBackgroundColor:'#a78bfa' }]
+        },
+        options: { plugins:{legend:{display:false}}, scales:{y:{ticks:{color:'#888'},grid:{color:'#222'}},x:{ticks:{color:'#888'},grid:{color:'#222'}}}}
+      });
+    }
+  }
+
+  // Duration chart
+  const recent = workouts.slice(-10);
+  const ctx3 = document.getElementById('chart-duration');
+  if (ctx3) {
+    if (Chart.getChart(ctx3)) Chart.getChart(ctx3).destroy();
+    new Chart(ctx3, {
+      type: 'bar',
+      data: {
+        labels: recent.map(w => new Date(w.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})),
+        datasets: [{ data: recent.map(w=>w.duration||0), backgroundColor:'#0ea5e9', borderRadius:6 }]
+      },
+      options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{color:'#888'},grid:{color:'#222'}},x:{ticks:{color:'#888'},grid:{color:'#222'}}}}
+    });
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+render();
+</script>
+</body>
+</html>
