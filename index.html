@@ -399,57 +399,38 @@ function getDayType(dow) {
 }
 
 function renderHome() {
-  const today = new Date().getDay();
-  const todayPlan = getTodaySchedule();
   const last = state.savedWorkouts[state.savedWorkouts.length - 1];
   const totalSessions = state.savedWorkouts.length;
   const thisWeek = state.savedWorkouts.filter(w => {
-    const d = new Date(w.date);
-    const now = new Date();
-    const diff = (now - d) / (1000*60*60*24);
+    const diff = (Date.now() - new Date(w.date).getTime()) / (1000*60*60*24);
     return diff < 7;
   }).length;
 
-  let weekHtml = '';
-  for (let d = 1; d <= 7; d++) {
-    const dow = d % 7;
-    const type = getDayType(dow);
-    const isToday = dow === today;
-    const icon = type === 'A' ? '💪' : type === 'B' ? '🦵' : '🧘';
-    weekHtml += `<div class="week-day ${isToday?'today':''}">
-      <div class="day-lbl">${getDayLabel(dow)}</div>
-      <div class="day-type">${icon}<br>${type}</div>
-    </div>`;
-  }
-
   const lastHtml = last ? `
-    <div class="section-title">Last Workout</div>
+    <div class="section-title" style="margin-top:4px">Last Workout</div>
     <div class="last-workout">
       <div class="lw-row"><span class="lw-label">Date</span><span class="lw-value">${new Date(last.date).toLocaleDateString()}</span></div>
       <div class="lw-row"><span class="lw-label">Plan</span><span class="lw-value">${last.plan === 'OFF' ? 'Off Day' : 'Day ' + last.plan}</span></div>
       <div class="lw-row"><span class="lw-label">Duration</span><span class="lw-value">${last.duration} min</span></div>
       <div class="lw-row"><span class="lw-label">Effort</span><span class="lw-value">${['','😴','🙂','😤','🔥','💀'][last.effort] || '—'}</span></div>
-    </div>` : '';
+    </div>` : `
+    <div class="last-workout" style="text-align:center;color:var(--muted);font-size:13px;padding:20px">
+      No workouts logged yet — pick a day below and get started!
+    </div>`;
 
-  const todayW = WORKOUTS[todayPlan];
   return `
     <div class="section">
-      <div class="section-title">This Week</div>
-      <div class="week-grid" style="margin-bottom:16px">${weekHtml}</div>
+      <div class="section-title">Choose Your Workout</div>
 
-      <div class="today-box">
-        <h2>${todayW.icon} Today: ${todayPlan === 'OFF' ? 'Off Day' : 'Day ' + todayPlan}</h2>
-        <div class="sub">${todayW.name} · ${todayW.scheduledDays}</div>
-        <button class="btn btn-primary" onclick="startWorkout('${todayPlan}')">▶ Start Today's Workout</button>
-      </div>
-
-      <div class="section-title">Quick Start</div>
-      <div class="start-row" style="margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
         ${Object.entries(WORKOUTS).map(([key, w]) => `
-          <div class="start-card" onclick="startWorkout('${key}')">
-            <div class="sc-icon">${w.icon}</div>
-            <div class="sc-name">${w.shortName}</div>
-            <div class="sc-days">${w.scheduledDays}</div>
+          <div class="start-card" onclick="startWorkout('${key}')" style="display:flex;align-items:center;gap:14px;text-align:left;padding:16px 18px">
+            <div style="font-size:36px;flex-shrink:0">${w.icon}</div>
+            <div style="flex:1">
+              <div class="sc-name" style="font-size:15px;margin-bottom:3px">${w.name}</div>
+              <div class="sc-days">${w.scheduledDays}</div>
+            </div>
+            <div style="font-size:22px;color:var(--muted)">▶</div>
           </div>`).join('')}
       </div>
 
@@ -669,6 +650,17 @@ function renderFinishModal() {
 }
 
 async function saveWorkout() {
+  // Duplicate guard — ignore if a save already happened within 10 seconds
+  const lastWorkout = state.savedWorkouts[state.savedWorkouts.length - 1];
+  if (lastWorkout) {
+    const secondsSinceLast = (Date.now() - new Date(lastWorkout.date).getTime()) / 1000;
+    if (secondsSinceLast < 10) {
+      const syncEl = document.getElementById('sync-status');
+      if (syncEl) { syncEl.className='sync-msg sync-err'; syncEl.textContent='⚠ Already saved — wait a few seconds and try again if intentional.'; }
+      return;
+    }
+  }
+
   const W = WORKOUTS[state.activeDay];
   const exercises = W.exercises.filter(e => state.logs[e.id]);
   const workout = {
