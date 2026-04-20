@@ -186,7 +186,7 @@
   <header id="hdr">
     <div id="hdr-title">💪 PF Tracker</div>
     <div id="hdr-right" style="display:flex;align-items:center;gap:8px;">
-      <div id="hdr-timer" style="display:none"></div>
+      <div id="hdr-timer" style="display:none;cursor:pointer;border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:15px;font-weight:700;" onclick="toggleTimer()" title="Tap to start / pause timer"></div>
       <div id="hdr-sync"></div>
     </div>
   </header>
@@ -214,13 +214,11 @@ const WORKOUTS = {
     name: 'Day A — Upper Body',
     shortName: 'Day A',
     icon: '💪',
-    scheduledDays: 'Mon / Thu',
     exercises: [
-      { id:'a-stair-warmup', name:'Stair Stepper Warmup', type:'cardio', suggestedTime:5, must:true, muscle:'Cardio / Full Body', tip:'Start easy, build pace after 2 min. Warms joints and elevates heart rate before lifting.', emoji:'🪜' },
+      { id:'a-stair-warmup', name:'Stair Stepper Warmup', type:'stair', suggestedTime:5, must:true, muscle:'Cardio / Full Body', tip:'Start easy, build pace after 2 min. Warms joints and elevates heart rate before lifting.', emoji:'🪜' },
       { id:'a-chest-press', name:'Seated Chest Press', type:'strength', sets:3, suggestedReps:'10–12', must:true, muscle:'Chest / Front Delts / Triceps', tip:"Adjust seat so handles align with mid-chest. Elbows slightly below shoulders. Don't lock out at top. Slow return.", emoji:'🤜' },
-      { id:'a-pec-deck', name:'Pec Deck / Cable Fly', type:'strength', sets:2, suggestedReps:'12', must:false, muscle:'Chest (inner)', tip:'Squeeze pecs at center. Slow controlled return. Great isolation after the press.', emoji:'🤲' },
+      { id:'a-pec-deck', name:'Pec Deck / Cable Fly', type:'strength', sets:3, suggestedReps:'12', must:false, muscle:'Chest (inner)', tip:'Squeeze pecs at center. Slow controlled return. Great isolation after the press.', emoji:'🤲' },
       { id:'a-shoulder-press', name:'Seated Shoulder Press', type:'strength', sets:3, suggestedReps:'10', must:true, muscle:'Shoulders / Triceps', tip:"Keep core tight. Don't arch lower back. Stop just before full lockout. Adjust seat so handles are at ear height.", emoji:'🙆' },
-      { id:'a-face-pull', name:'Cable Face Pull', type:'strength', sets:3, suggestedReps:'12–15', must:true, muscle:'Rear Delts / Rotator Cuff', tip:'CRITICAL for long-term shoulder health. Use rope attachment, pull to forehead with elbows high. Light weight, perfect form — never ego-lift this one.', emoji:'🎯' },
       { id:'a-lat-pulldown', name:'Lat Pulldown', type:'strength', sets:3, suggestedReps:'10–12', must:true, muscle:'Lats / Biceps', tip:'Wide grip, pull bar to upper chest. Lean back 10–15 degrees. Feel the lats engaging, not just biceps pulling.', emoji:'⬇️' },
       { id:'a-seated-row', name:'Seated Row', type:'strength', sets:3, suggestedReps:'10–12', must:true, muscle:'Mid Back / Biceps', tip:"Sit tall. Pull elbows straight back, squeeze shoulder blades together at end. Don't round forward on the return.", emoji:'🚣' },
       { id:'a-rear-delt', name:'Rear Delt Fly (Reverse Pec Deck)', type:'strength', sets:2, suggestedReps:'12–15', must:false, muscle:'Rear Delts / Upper Back', tip:'Reverse the pec deck machine. Arms go from front to sides. Light weight, high control. Builds the back of your shoulder.', emoji:'🦅' },
@@ -229,16 +227,15 @@ const WORKOUTS = {
       { id:'a-ab-crunch', name:'Ab Crunch Machine', type:'strength', sets:3, suggestedReps:'15–20', must:true, muscle:'Core / Abs', tip:"Slow and controlled — don't use momentum. Round forward at the top and hold 1 second. This ends every workout.", emoji:'🔩' },
       { id:'a-torso-rotation', name:'Torso Rotation Machine', type:'strength', sets:2, suggestedReps:'15 each side', must:false, muscle:'Obliques / Rotational Core', tip:"Controlled rotation only. Great for spinal health and snowboard balance. Don't rush this one.", emoji:'🔄' },
       { id:'a-plank', name:'Plank (Mat)', type:'timed', sets:3, suggestedReps:'30–45 sec', must:false, muscle:'Full Core', tip:"Body in a straight line head to heel. Squeeze glutes and abs. Don't let hips sag. 30 seconds is more than enough when done right.", emoji:'🧱' },
-      { id:'a-stair-cooldown', name:'Stair Stepper Cooldown', type:'cardio', suggestedTime:10, must:false, muscle:'Cardio / Recovery', tip:'Go as long as you can. Reduce intensity the last 2 minutes. Build toward 15–20 min over time.', emoji:'🪜' }
+      { id:'a-stair-cooldown', name:'Stair Stepper Cooldown', type:'stair', suggestedTime:10, must:false, muscle:'Cardio / Recovery', tip:'Go as long as you can. Reduce intensity the last 2 minutes. Build toward 15–20 min over time.', emoji:'🪜' }
     ]
   },
   B: {
     name: 'Day B — Lower Body',
     shortName: 'Day B',
     icon: '🦵',
-    scheduledDays: 'Wed / Sat',
     exercises: [
-      { id:'b-stair-warmup', name:'Stair Stepper Warmup', type:'cardio', suggestedTime:5, must:true, muscle:'Cardio / Full Body', tip:'Light pace for 5 min. Gets blood into the legs before loading them.', emoji:'🪜' },
+      { id:'b-stair-warmup', name:'Stair Stepper Warmup', type:'stair', suggestedTime:5, must:true, muscle:'Cardio / Full Body', tip:'Light pace for 5 min. Gets blood into the legs before loading them.', emoji:'🪜' },
       { id:'b-leg-press', name:'Leg Press', type:'strength', sets:3, suggestedReps:'10–12', must:true, muscle:'Quads / Hamstrings / Glutes', tip:"Don't lock out knees at top. Feet shoulder-width. Lower until knees reach 90°. This is your biggest lower body lift.", emoji:'🦵' },
       { id:'b-leg-extension', name:'Leg Extension', type:'strength', sets:3, suggestedReps:'12', must:true, muscle:'Quadriceps', tip:'Pause 1 second at full extension. Slow lowering phase. Protects the knee over time when done with control.', emoji:'🦵' },
       { id:'b-leg-curl', name:'Seated Leg Curl', type:'strength', sets:3, suggestedReps:'12', must:true, muscle:'Hamstrings', tip:'Full range of motion. Squeeze at bottom. Slow controlled return. Hamstrings protect the knee — do not skip.', emoji:'🦵' },
@@ -250,16 +247,15 @@ const WORKOUTS = {
       { id:'b-ab-crunch', name:'Ab Crunch Machine', type:'strength', sets:3, suggestedReps:'15–20', must:true, muscle:'Core / Abs', tip:"Slow and controlled. Round forward at top, hold 1 second. Don't use momentum. Core work ends every session.", emoji:'🔩' },
       { id:'b-knee-raise', name:"Hanging Knee Raises (Captain's Chair)", type:'strength', sets:3, suggestedReps:'10–15', must:false, muscle:'Lower Abs / Hip Flexors', tip:'Arms on pads, hang free, pull knees to chest. Slow lowering. Excellent lower core builder — better than planks for functional strength.', emoji:'🧗' },
       { id:'b-torso-rotation', name:'Torso Rotation Machine', type:'strength', sets:2, suggestedReps:'15 each side', must:false, muscle:'Obliques / Core', tip:'Controlled rotation. Builds rotational core strength. Pays off on the snowboard.', emoji:'🔄' },
-      { id:'b-stair-cooldown', name:'Stair Stepper Cooldown', type:'cardio', suggestedTime:10, must:true, muscle:'Cardio / Recovery', tip:'You earned it. Go as long as you can. Build to 15–20 min over weeks.', emoji:'🪜' }
+      { id:'b-stair-cooldown', name:'Stair Stepper Cooldown', type:'stair', suggestedTime:10, must:true, muscle:'Cardio / Recovery', tip:'You earned it. Go as long as you can. Build to 15–20 min over weeks.', emoji:'🪜' }
     ]
   },
   OFF: {
     name: 'Off Day — Active Recovery',
     shortName: 'Off Day',
     icon: '🧘',
-    scheduledDays: 'Tue / Fri / Sun',
     exercises: [
-      { id:'off-rowing', name:'Home Rowing', type:'cardio', suggestedTime:20, must:false, muscle:'Full Body / Active Recovery', tip:'Moderate pace only — this is recovery, not a workout. Keeps blood moving to sore muscles. 20 min at conversational effort.', emoji:'🚣' },
+      { id:'off-rowing', name:'Home Rowing', type:'cardio', suggestedTime:20, must:false, muscle:'Full Body / Active Recovery', tip:'Moderate pace only — recovery, not a workout. Keeps blood moving to sore muscles. 20 min at conversational effort.', emoji:'🚣' },
       { id:'off-hip-flexor', name:'Hip Flexor Stretch', type:'stretch', suggestedReps:'30 sec each side', must:true, muscle:'Hip Flexors', tip:"Lunge position, back knee down. Lean forward into the stretch. Critical if you sit at a desk — tight hip flexors affect everything.", emoji:'🧘' },
       { id:'off-chest-stretch', name:'Chest Opener Stretch', type:'stretch', suggestedReps:'30 sec', must:true, muscle:'Chest / Front Shoulders', tip:'Clasp hands behind back, lift chest up and out. Counteracts all the chest press work. Do this daily if possible.', emoji:'🧘' },
       { id:'off-hamstring', name:'Hamstring Stretch', type:'stretch', suggestedReps:'30 sec each side', must:true, muscle:'Hamstrings', tip:"Seated or standing — don't bounce. Hold steady at edge of discomfort. Protects your lower back when these stay flexible.", emoji:'🧘' },
@@ -291,6 +287,81 @@ const MACHINES = [
 ];
 
 // ============================================================
+// BODY DIAGRAM — muscle highlight SVG
+// ============================================================
+const MACHINE_MUSCLES = {
+  'Stair Stepper':           ['quads','calves','hips'],
+  'Rowing Machine':          ['back','arms','core'],
+  'Seated Chest Press':      ['chest','shoulders','arms'],
+  'Pec Deck / Cable Fly':    ['chest'],
+  'Seated Shoulder Press':   ['shoulders','arms'],
+  'Cable Station':           ['shoulders','back','arms'],
+  'Lat Pulldown':            ['back','arms'],
+  'Seated Row':              ['back','arms'],
+  'Bicep Curl Machine':      ['arms'],
+  'Leg Press':               ['quads','hips'],
+  'Leg Extension':           ['quads'],
+  'Seated Leg Curl':         ['hamstrings'],
+  'Hip Abduction / Adduction':['hips'],
+  'Calf Raise Machine':      ['calves'],
+  'Ab Crunch Machine':       ['core'],
+  'Torso Rotation Machine':  ['core'],
+  "Captain's Chair":         ['core'],
+  'Back Extension':          ['back','hips'],
+};
+
+function bodyDiagram(active = [], large = false) {
+  const sz = large ? 110 : 70;
+  const on = '#7c3aed', lo = '#a78bfa';
+  const off = '#252525', loff = '#3a3a3a';
+  const f = (g) => active.includes(g) ? on : off;
+  const s = (g) => active.includes(g) ? lo : loff;
+
+  // Muscle label list for large view
+  const labels = large ? `
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;justify-content:center;">
+      ${active.map(m => `<span style="font-size:11px;background:${on};color:#fff;padding:2px 8px;border-radius:10px;font-weight:600;text-transform:capitalize">${m}</span>`).join('')}
+    </div>` : '';
+
+  return `<div style="display:flex;flex-direction:column;align-items:center">
+    <svg viewBox="0 0 80 145" xmlns="http://www.w3.org/2000/svg" style="width:${sz}px;height:auto">
+      <!-- Head -->
+      <circle cx="40" cy="10" r="8" fill="${off}" stroke="${loff}" stroke-width="1.2"/>
+      <!-- Neck -->
+      <rect x="36" y="17" width="8" height="6" rx="2" fill="${off}" stroke="${loff}" stroke-width="1"/>
+      <!-- Shoulders -->
+      <ellipse cx="21" cy="28" rx="10" ry="6" fill="${f('shoulders')}" stroke="${s('shoulders')}" stroke-width="1.2"/>
+      <ellipse cx="59" cy="28" rx="10" ry="6" fill="${f('shoulders')}" stroke="${s('shoulders')}" stroke-width="1.2"/>
+      <!-- Chest -->
+      <path d="M28,23 Q40,34 52,23 L54,44 Q40,48 26,44 Z" fill="${f('chest')}" stroke="${s('chest')}" stroke-width="1.2"/>
+      <!-- Lats/Back (side wings) -->
+      <path d="M14,30 L28,44 L24,60 L11,50 Z" fill="${f('back')}" stroke="${s('back')}" stroke-width="1.2"/>
+      <path d="M66,30 L52,44 L56,60 L69,50 Z" fill="${f('back')}" stroke="${s('back')}" stroke-width="1.2"/>
+      <!-- Core/Abs -->
+      <rect x="28" y="44" width="24" height="20" rx="3" fill="${f('core')}" stroke="${s('core')}" stroke-width="1.2"/>
+      <!-- Upper Arms -->
+      <rect x="9" y="26" width="10" height="22" rx="5" fill="${f('arms')}" stroke="${s('arms')}" stroke-width="1.2"/>
+      <rect x="61" y="26" width="10" height="22" rx="5" fill="${f('arms')}" stroke="${s('arms')}" stroke-width="1.2"/>
+      <!-- Forearms -->
+      <rect x="7" y="48" width="9" height="16" rx="4" fill="${f('arms')}" stroke="${s('arms')}" stroke-width="1.2"/>
+      <rect x="64" y="48" width="9" height="16" rx="4" fill="${f('arms')}" stroke="${s('arms')}" stroke-width="1.2"/>
+      <!-- Hips/Glutes -->
+      <path d="M26,64 Q40,60 54,64 L57,82 Q40,86 23,82 Z" fill="${f('hips')}" stroke="${s('hips')}" stroke-width="1.2"/>
+      <!-- Quads (front of thigh) -->
+      <rect x="25" y="80" width="13" height="32" rx="6" fill="${f('quads')}" stroke="${s('quads')}" stroke-width="1.2"/>
+      <rect x="42" y="80" width="13" height="32" rx="6" fill="${f('quads')}" stroke="${s('quads')}" stroke-width="1.2"/>
+      <!-- Hamstrings (overlay, slightly inset — represents back of leg) -->
+      <rect x="27" y="81" width="10" height="29" rx="5" fill="${f('hamstrings')}" stroke="${s('hamstrings')}" stroke-width="1.2" opacity="0.85"/>
+      <rect x="43" y="81" width="10" height="29" rx="5" fill="${f('hamstrings')}" stroke="${s('hamstrings')}" stroke-width="1.2" opacity="0.85"/>
+      <!-- Calves -->
+      <rect x="26" y="114" width="11" height="26" rx="5" fill="${f('calves')}" stroke="${s('calves')}" stroke-width="1.2"/>
+      <rect x="43" y="114" width="11" height="26" rx="5" fill="${f('calves')}" stroke="${s('calves')}" stroke-width="1.2"/>
+    </svg>
+    ${labels}
+  </div>`;
+}
+
+// ============================================================
 // STATE
 // ============================================================
 let state = {
@@ -298,7 +369,7 @@ let state = {
   activeDay: null,         // 'A' | 'B' | 'OFF'
   workoutStartTime: null,
   timerInterval: null,
-  timerPaused: false,
+  timerRunning: false,
   timerElapsed: 0,
   logs: {},                // { exerciseId: { reps, weight, time, completed } }
   mustDoOnly: false,
@@ -325,6 +396,7 @@ function saveWorkoutsLocal() {
 function startTimer() {
   if (state.timerInterval) clearInterval(state.timerInterval);
   state.workoutStartTime = Date.now() - (state.timerElapsed * 1000);
+  state.timerRunning = true;
   state.timerInterval = setInterval(() => {
     state.timerElapsed = Math.floor((Date.now() - state.workoutStartTime) / 1000);
     updateTimerDisplay();
@@ -333,6 +405,16 @@ function startTimer() {
 function stopTimer() {
   if (state.timerInterval) clearInterval(state.timerInterval);
   state.timerInterval = null;
+  state.timerRunning = false;
+}
+function toggleTimer() {
+  if (!state.activeDay) return;
+  if (state.timerRunning) {
+    stopTimer();
+  } else {
+    startTimer();
+  }
+  updateTimerDisplay();
 }
 function formatTime(secs) {
   const m = Math.floor(secs / 60).toString().padStart(2,'0');
@@ -344,7 +426,10 @@ function updateTimerDisplay() {
   if (!el) return;
   if (state.activeDay) {
     el.style.display = 'block';
-    el.textContent = formatTime(state.timerElapsed);
+    const icon = state.timerRunning ? '⏸' : '▶';
+    el.style.background = state.timerRunning ? '#1f1a00' : '#1a1a1a';
+    el.style.color = state.timerRunning ? 'var(--yellow)' : 'var(--muted)';
+    el.innerHTML = `${icon} ${formatTime(state.timerElapsed)}`;
   } else {
     el.style.display = 'none';
   }
@@ -418,19 +503,29 @@ function renderHome() {
       No workouts logged yet — pick a day below and get started!
     </div>`;
 
+  const resumeBanner = state.activeDay ? `
+    <div onclick="setTab('workout')" style="background:linear-gradient(135deg,#1e0a3c,#0d1a0d);border:1px solid var(--purple);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;cursor:pointer;">
+      <div style="font-size:28px">${WORKOUTS[state.activeDay].icon}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;color:var(--purple-light);font-weight:700;margin-bottom:2px">WORKOUT IN PROGRESS</div>
+        <div style="font-size:15px;font-weight:700">${WORKOUTS[state.activeDay].name}</div>
+      </div>
+      <div style="font-size:13px;color:var(--purple-light);font-weight:700">Resume →</div>
+    </div>` : '';
+
   return `
     <div class="section">
+      ${resumeBanner}
       <div class="section-title">Choose Your Workout</div>
 
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
         ${Object.entries(WORKOUTS).map(([key, w]) => `
-          <div class="start-card" onclick="startWorkout('${key}')" style="display:flex;align-items:center;gap:14px;text-align:left;padding:16px 18px">
+          <div class="start-card" onclick="startWorkout('${key}')" style="display:flex;align-items:center;gap:14px;text-align:left;padding:16px 18px${state.activeDay===key ? ';border-color:var(--purple)' : ''}">
             <div style="font-size:36px;flex-shrink:0">${w.icon}</div>
             <div style="flex:1">
-              <div class="sc-name" style="font-size:15px;margin-bottom:3px">${w.name}</div>
-              <div class="sc-days">${w.scheduledDays}</div>
+              <div class="sc-name" style="font-size:15px;margin-bottom:2px">${w.name}</div>
             </div>
-            <div style="font-size:22px;color:var(--muted)">▶</div>
+            <div style="font-size:18px;color:var(--muted)">${state.activeDay===key ? '▶ Active' : '▶'}</div>
           </div>`).join('')}
       </div>
 
@@ -447,11 +542,17 @@ function renderHome() {
 // WORKOUT TAB
 // ============================================================
 function startWorkout(day) {
+  // If a workout is already running, confirm before wiping it
+  if (state.activeDay) {
+    if (state.activeDay === day) { setTab('workout'); return; } // just resume
+    if (!confirm('You have an active workout. Start a new one and lose current progress?')) return;
+    stopTimer();
+  }
   state.activeDay = day;
   state.logs = {};
   state.mustDoOnly = false;
   state.timerElapsed = 0;
-  startTimer();
+  state.timerRunning = false;
   setTab('workout');
 }
 
@@ -493,7 +594,6 @@ function renderWorkoutPicker() {
           <div class="nwb-card ${key==='OFF'?'nwb-off':''}" onclick="startWorkout('${key}')">
             <div class="nwb-icon">${w.icon}</div>
             <div class="nwb-name">${w.name}</div>
-            <div class="nwb-days">${w.scheduledDays}</div>
           </div>`).join('')}
       </div>
     </div>`;
@@ -518,7 +618,22 @@ function renderExerciseCard(ex) {
   const weightVal = log.weight || (last ? last.weight : '');
 
   let inputsHtml = '';
-  if (ex.type === 'cardio') {
+  if (ex.type === 'stair') {
+    inputsHtml = `
+      <div class="ex-sets-label">Suggested: ${ex.suggestedTime} min</div>
+      <div class="ex-inputs">
+        <div class="ex-input-group">
+          <label>Time (min)</label>
+          <input type="number" min="0" placeholder="${ex.suggestedTime}" value="${log.time||''}"
+            oninput="updateLog('${ex.id}','time',this.value)">
+        </div>
+        <div class="ex-input-group">
+          <label>Level / Speed</label>
+          <input type="number" min="0" placeholder="e.g. 7" value="${log.speed||''}"
+            oninput="updateLog('${ex.id}','speed',this.value)">
+        </div>
+      </div>`;
+  } else if (ex.type === 'cardio') {
     inputsHtml = `
       <div class="ex-sets-label">Suggested: ${ex.suggestedTime} min</div>
       <div class="ex-inputs" style="grid-template-columns:1fr">
@@ -697,6 +812,7 @@ async function saveWorkout() {
         actualReps: log.reps || null,
         weight: log.weight || null,
         time: log.time || null,
+        speed: log.speed || null,
         completed: log.completed || false
       };
     })
@@ -744,11 +860,11 @@ function renderMachines() {
       <div class="machines-grid">
         ${MACHINES.filter(m => m.category === cat).map((m, i) => {
           const idx = MACHINES.indexOf(m);
-          return `<div class="machine-card" onclick="showMachineDetail(${idx})">
-            <div class="mc-icon">${m.emoji}</div>
-            <div class="mc-name">${m.name}</div>
-            <div class="mc-category">${m.muscle}</div>
-            <div class="mc-use">${m.use}</div>
+          const muscles = MACHINE_MUSCLES[m.name] || [];
+          return `<div class="machine-card" onclick="showMachineDetail(${idx})" style="text-align:center">
+            ${bodyDiagram(muscles, false)}
+            <div class="mc-name" style="margin-top:6px">${m.name}</div>
+            <div class="mc-use" style="margin-top:3px">${m.use}</div>
           </div>`;
         }).join('')}
       </div>
@@ -761,13 +877,18 @@ function showMachineDetail(idx) {
 }
 
 function renderMachineDetail(m) {
+  const muscles = MACHINE_MUSCLES[m.name] || [];
   return `
     <div class="machine-detail">
       <button class="back-btn" onclick="state.machineDetail=null;render()">← All Machines</button>
-      <div class="md-icon">${m.emoji}</div>
-      <div class="md-name">${m.name}</div>
-      <div class="md-muscle">${m.muscle}</div>
-      <div class="md-use">📋 ${m.use}</div>
+      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px">
+        <div style="flex-shrink:0">${bodyDiagram(muscles, true)}</div>
+        <div style="flex:1">
+          <div class="md-name">${m.name}</div>
+          <div class="md-muscle">${m.muscle}</div>
+          <div class="md-use" style="margin-top:8px">📋 ${m.use}</div>
+        </div>
+      </div>
       <div class="md-tip">${m.tip}</div>
     </div>`;
 }
