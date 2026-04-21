@@ -144,7 +144,9 @@
     .md-tip { font-size: 13px; line-height: 1.6; color: var(--text); background: var(--surface2); padding: 12px; border-radius: 10px; }
     .back-btn { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--purple-light); cursor: pointer; margin-bottom: 16px; background: none; border: none; padding: 0; }
     .machine-photo-wrap { margin-bottom: 16px; border-radius: 12px; overflow: hidden; background: var(--surface2); }
-    .machine-photo { width: 100%; height: 200px; object-fit: cover; display: block; }
+    .machine-photo { width: 100%; height: 240px; object-fit: cover; display: block; }
+    .machine-photo-placeholder { width: 100%; height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 13px; border-radius: 12px; border: 2px dashed var(--border); margin-bottom: 16px; }
+    .machine-photo-placeholder .ph-icon { font-size: 36px; opacity: .5; }
 
     /* ── LOG TAB ── */
     .log-entry { background: var(--surface); border-radius: var(--radius); padding: 14px; margin: 10px 12px; border: 1px solid var(--border); cursor: pointer; }
@@ -273,14 +275,15 @@ const MACHINES = [
   { name:'Seated Chest Press', category:'Upper Body', muscle:'Chest / Front Delts / Triceps', use:'3 sets × 10–12 reps', tip:"Adjust seat height so handles align with mid-chest. Elbows slightly below shoulder height. Don't slam the weights back.", emoji:'🤜' },
   { name:'Pec Deck / Cable Fly', category:'Upper Body', muscle:'Chest (inner / isolation)', use:'2 sets × 12 reps', tip:"Squeeze at center for 1 second. Slow return. Also reverses into Rear Delt Fly — same machine, different direction.", emoji:'🤲' },
   { name:'Seated Shoulder Press', category:'Upper Body', muscle:'Deltoids / Triceps', use:'3 sets × 10 reps', tip:"Seat adjusted so handles start at ear height. Core tight. Don't arch lower back to push the weight.", emoji:'🙆' },
-  { name:'Cable Station', category:'Upper Body', muscle:'Rear Delts / Triceps / Lats (varies by attachment)', use:'Face Pull: 3×12–15 | Pushdown: 2×10–12', tip:'Face pull: rope attachment at forehead height, elbows high — builds rotator cuff. Pushdown: rope or bar at waist height, elbows at sides.', emoji:'🎯' },
+  { name:'Tricep Pushdown (Cable)', category:'Upper Body', muscle:'Triceps', use:'2 sets × 10–12 reps', tip:'Set cable to upper position. Keep elbows locked at your sides throughout — only your forearms move. Full extension at the bottom, slow return. Rope or straight bar both work.', emoji:'↕️' },
   { name:'Lat Pulldown', category:'Upper Body', muscle:'Latissimus Dorsi / Biceps', use:'3 sets × 10–12 reps', tip:"Wide grip, pull bar to upper chest. Lean back 10–15 degrees. Think 'elbows to hips' to feel the lats working.", emoji:'⬇️' },
   { name:'Seated Row', category:'Upper Body', muscle:'Mid Back / Rhomboids / Biceps', use:'3 sets × 10–12 reps', tip:"Sit tall, pull elbows straight back, squeeze shoulder blades together at the end. Don't round forward on the way out.", emoji:'🚣' },
   { name:'Bicep Curl Machine', category:'Upper Body', muscle:'Biceps', use:'2 sets × 10–12 reps', tip:'Full range of motion. Slow lowering phase. Keep upper arms flat on the pad throughout the rep.', emoji:'💪' },
   { name:'Leg Press', category:'Lower Body', muscle:'Quads / Hamstrings / Glutes', use:'3 sets × 10–12 reps', tip:"Feet shoulder-width at mid-pad. Lower until knees reach 90°. Don't lock knees at top. This is your biggest lower body exercise.", emoji:'🦵' },
   { name:'Leg Extension', category:'Lower Body', muscle:'Quadriceps', use:'3 sets × 12 reps', tip:'Pause 1 second at full extension. Slow lowering. Done with control, this protects the knee. Done with momentum, it stresses it.', emoji:'🦵' },
   { name:'Seated Leg Curl', category:'Lower Body', muscle:'Hamstrings', use:'3 sets × 12 reps', tip:'Full range of motion. Slow return. Strong hamstrings are the #1 protector of the knee joint.', emoji:'🦵' },
-  { name:'Hip Abduction / Adduction', category:'Lower Body', muscle:'Outer Hips, Glutes / Inner Thigh, Groin', use:'3 sets × 15 reps each direction', tip:"One machine, two exercises. Pads outside = legs apart (outer hips). Pads inside = legs together (groin). Do both every B day — especially important for snowboarding.", emoji:'↔️' },
+  { name:'Hip Abduction', category:'Lower Body', muscle:'Outer Hips / Glutes', use:'3 sets × 15 reps', tip:"Pads on the outside of your knees — push legs apart. Builds lateral hip stability. Critical for snowboarding balance and knee health.", emoji:'↔️' },
+  { name:'Hip Adduction', category:'Lower Body', muscle:'Inner Thigh / Groin', use:'3 sets × 15 reps', tip:"Pads on the inside of your knees — squeeze legs together. Targets the groin and inner thigh. Do this every B day without skipping.", emoji:'↔️' },
   { name:'Calf Raise Machine', category:'Lower Body', muscle:'Gastrocnemius / Soleus', use:'3 sets × 15–20 reps (or use stair edge)', tip:'Full range — all the way up and all the way down. Slow descent. Can also do this on the edge of a stair step.', emoji:'🦶' },
   { name:'Ab Crunch Machine', category:'Core', muscle:'Rectus Abdominis', use:'3 sets × 15–20 reps', tip:"Slow crunch — don't use momentum or throw your head forward. Round your back as you compress. Hold 1 second at the bottom.", emoji:'🔩' },
   { name:'Torso Rotation Machine', category:'Core', muscle:'Obliques / Rotational Core', use:'2 sets × 15 reps each side', tip:'Controlled rotation, not momentum. This builds the rotational strength that matters for snowboarding and everyday movement.', emoji:'🔄' },
@@ -300,14 +303,15 @@ const MACHINE_PHOTO_NAMES = {
   'Seated Chest Press':         'seated-chest-press',
   'Pec Deck / Cable Fly':       'pec-deck',
   'Seated Shoulder Press':      'seated-shoulder-press',
-  'Cable Station':              'cable-station',
+  'Tricep Pushdown (Cable)':    'tricep-pushdown',
   'Lat Pulldown':               'lat-pulldown',
   'Seated Row':                 'seated-row',
   'Bicep Curl Machine':         'bicep-curl',
   'Leg Press':                  'leg-press',
   'Leg Extension':              'leg-extension',
   'Seated Leg Curl':            'seated-leg-curl',
-  'Hip Abduction / Adduction':  'hip-abduction',
+  'Hip Abduction':              'hip-abduction',
+  'Hip Adduction':              'hip-adduction',
   'Calf Raise Machine':         'calf-raise',
   'Ab Crunch Machine':          'ab-crunch',
   'Torso Rotation Machine':     'torso-rotation',
@@ -322,14 +326,15 @@ const MACHINE_MUSCLES = {
   'Seated Chest Press':      ['chest','shoulders','arms'],
   'Pec Deck / Cable Fly':    ['chest'],
   'Seated Shoulder Press':   ['shoulders','arms'],
-  'Cable Station':           ['shoulders','back','arms'],
+  'Tricep Pushdown (Cable)': ['arms'],
   'Lat Pulldown':            ['back','arms'],
   'Seated Row':              ['back','arms'],
   'Bicep Curl Machine':      ['arms'],
   'Leg Press':               ['quads','hips'],
   'Leg Extension':           ['quads'],
   'Seated Leg Curl':         ['hamstrings'],
-  'Hip Abduction / Adduction':['hips'],
+  'Hip Abduction':             ['hips'],
+  'Hip Adduction':             ['hips'],
   'Calf Raise Machine':      ['calves'],
   'Ab Crunch Machine':       ['core'],
   'Torso Rotation Machine':  ['core'],
@@ -904,7 +909,6 @@ function showMachineDetail(idx) {
 }
 
 function renderMachineDetail(m) {
-  const muscles = MACHINE_MUSCLES[m.name] || [];
   const photoKey = MACHINE_PHOTO_NAMES[m.name];
   const photoId = photoKey ? 'pw-' + photoKey.replace(/-/g,'') : '';
   const photoSection = photoKey ? `
@@ -913,20 +917,17 @@ function renderMachineDetail(m) {
         src="./img/${photoKey}.jpg"
         alt="${m.name} at Planet Fitness"
         class="machine-photo"
-        onerror="var el=document.getElementById('${photoId}');if(el)el.style.display='none';"
+        onerror="var img=this;if(img.src.indexOf('.jpg')>-1){img.src=img.src.replace('.jpg','.png');}else{var el=document.getElementById('${photoId}');if(el){el.innerHTML='<div class=\\'machine-photo-placeholder\\'><div class=\\'ph-icon\\'>📷</div><div>No photo yet — upload img/${photoKey}.jpg to GitHub</div></div>';el.style.overflow='visible';}}"
       >
     </div>` : '';
   return `
     <div class="machine-detail">
       <button class="back-btn" onclick="state.machineDetail=null;render()">← All Machines</button>
       ${photoSection}
-      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px">
-        <div style="flex-shrink:0">${bodyDiagram(muscles, true)}</div>
-        <div style="flex:1">
-          <div class="md-name">${m.name}</div>
-          <div class="md-muscle">${m.muscle}</div>
-          <div class="md-use" style="margin-top:8px">📋 ${m.use}</div>
-        </div>
+      <div style="margin-bottom:16px">
+        <div class="md-name">${m.name}</div>
+        <div class="md-muscle">${m.muscle}</div>
+        <div class="md-use" style="margin-top:6px">📋 ${m.use}</div>
       </div>
       <div class="md-tip">${m.tip}</div>
     </div>`;
