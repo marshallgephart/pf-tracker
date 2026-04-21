@@ -143,6 +143,8 @@
     .md-use { font-size: 14px; color: var(--purple-light); font-weight: 600; margin-bottom: 12px; }
     .md-tip { font-size: 13px; line-height: 1.6; color: var(--text); background: var(--surface2); padding: 12px; border-radius: 10px; }
     .back-btn { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--purple-light); cursor: pointer; margin-bottom: 16px; background: none; border: none; padding: 0; }
+    .machine-photo-wrap { margin-bottom: 16px; border-radius: 12px; overflow: hidden; background: var(--surface2); }
+    .machine-photo { width: 100%; height: 200px; object-fit: cover; display: block; }
 
     /* ── LOG TAB ── */
     .log-entry { background: var(--surface); border-radius: var(--radius); padding: 14px; margin: 10px 12px; border: 1px solid var(--border); cursor: pointer; }
@@ -287,6 +289,31 @@ const MACHINES = [
 ];
 
 // ============================================================
+// MACHINE PHOTO FILENAMES
+// Upload photos to the img/ folder in your GitHub repo using these exact filenames.
+// Example: img/seated-chest-press.jpg → shows on the Seated Chest Press detail page.
+// If a photo doesn't exist, the body diagram shows as fallback (no error shown).
+// ============================================================
+const MACHINE_PHOTO_NAMES = {
+  'Stair Stepper':              'stair-stepper',
+  'Rowing Machine':             'rowing-machine',
+  'Seated Chest Press':         'seated-chest-press',
+  'Pec Deck / Cable Fly':       'pec-deck',
+  'Seated Shoulder Press':      'seated-shoulder-press',
+  'Cable Station':              'cable-station',
+  'Lat Pulldown':               'lat-pulldown',
+  'Seated Row':                 'seated-row',
+  'Bicep Curl Machine':         'bicep-curl',
+  'Leg Press':                  'leg-press',
+  'Leg Extension':              'leg-extension',
+  'Seated Leg Curl':            'seated-leg-curl',
+  'Hip Abduction / Adduction':  'hip-abduction',
+  'Calf Raise Machine':         'calf-raise',
+  'Ab Crunch Machine':          'ab-crunch',
+  'Torso Rotation Machine':     'torso-rotation',
+  'Back Extension':             'back-extension'
+};
+
 // BODY DIAGRAM — muscle highlight SVG
 // ============================================================
 const MACHINE_MUSCLES = {
@@ -878,9 +905,21 @@ function showMachineDetail(idx) {
 
 function renderMachineDetail(m) {
   const muscles = MACHINE_MUSCLES[m.name] || [];
+  const photoKey = MACHINE_PHOTO_NAMES[m.name];
+  const photoId = photoKey ? 'pw-' + photoKey.replace(/-/g,'') : '';
+  const photoSection = photoKey ? `
+    <div class="machine-photo-wrap" id="${photoId}">
+      <img
+        src="./img/${photoKey}.jpg"
+        alt="${m.name} at Planet Fitness"
+        class="machine-photo"
+        onerror="var el=document.getElementById('${photoId}');if(el)el.style.display='none';"
+      >
+    </div>` : '';
   return `
     <div class="machine-detail">
       <button class="back-btn" onclick="state.machineDetail=null;render()">← All Machines</button>
+      ${photoSection}
       <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px">
         <div style="flex-shrink:0">${bodyDiagram(muscles, true)}</div>
         <div style="flex:1">
