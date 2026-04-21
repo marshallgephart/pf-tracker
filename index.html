@@ -173,6 +173,32 @@
     .select-input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 13px; width: 100%; margin-bottom: 12px; }
     canvas { max-height: 200px; }
 
+    /* ── REST TIMER BAR ── */
+    #rest-bar {
+      position: fixed;
+      bottom: calc(56px + env(safe-area-inset-bottom));
+      left: 0; right: 0;
+      background: #1a0a2e;
+      border-top: 2px solid var(--purple);
+      padding: 10px 16px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 60;
+      box-shadow: 0 -4px 20px rgba(124,58,237,.3);
+    }
+    #rest-countdown {
+      font-size: 22px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--yellow);
+      min-width: 48px;
+      text-align: center;
+      transition: color .3s;
+    }
+    #rest-countdown.urgent { color: #ef4444; }
+    .rest-btn { border: none; border-radius: 8px; font-size: 12px; font-weight: 700; padding: 6px 12px; cursor: pointer; }
+
     /* ── MISC ── */
     .off-day-list { padding: 0 12px; }
     .no-workout-box { padding: 24px 12px; }
@@ -411,7 +437,12 @@ let state = {
   expandedLog: null,       // index of expanded log entry
   machineDetail: null,     // machine object
   statsExercise: '',
-  savedWorkouts: loadWorkouts()
+  savedWorkouts: loadWorkouts(),
+  // Rest timer
+  restDuration: 90,        // default seconds (60 | 90 | 120)
+  restSecs: 0,
+  restActive: false,
+  restInterval: null
 };
 
 function loadWorkouts() {
@@ -513,6 +544,100 @@ function updateTimerDisplay() {
     el.innerHTML = `${icon} ${formatTime(state.timerElapsed)}`;
   } else {
     el.style.display = 'none';
+  }
+}
+
+// ============================================================
+// REST TIMER
+// ============================================================
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25, 0.5].forEach(offset => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.2);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.2);
+    });
+  } catch(e) {}
+}
+
+function startRestTimer(secs) {
+  if (state.restInterval) clearInterval(state.restInterval);
+  state.restSecs = secs || state.restDuration;
+  state.restActive = true;
+  ensureRestBar();
+  updateRestBar();
+  state.restInterval = setInterval(() => {
+    state.restSecs--;
+    if (state.restSecs <= 0) {
+      clearInterval(state.restInterval);
+      state.restInterval = null;
+      state.restActive = false;
+      state.restSecs = 0;
+      updateRestBar();
+    } else {
+      updateRestBar();
+    }
+  }, 1000);
+}
+
+function stopRestTimer() {
+  if (state.restInterval) clearInterval(state.restInterval);
+  state.restInterval = null;
+  state.restActive = false;
+  state.restSecs = 0;
+  updateRestBar();
+}
+
+function addRestTime(secs) {
+  state.restSecs = Math.min((state.restSecs || 0) + secs, 300);
+  if (!state.restActive) startRestTimer(state.restSecs);
+  else updateRestBar();
+}
+
+function cycleRestDuration() {
+  const opts = [60, 90, 120];
+  const next = opts[(opts.indexOf(state.restDuration) + 1) % opts.length];
+  state.restDuration = next;
+  // Re-render just the workout header button without full render
+  const btn = document.getElementById('rest-dur-btn');
+  if (btn) btn.textContent = `⏱ ${next}s`;
+}
+
+function ensureRestBar() {
+  if (document.getElementById('rest-bar')) return;
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="rest-bar">
+      <span style="font-size:18px">⏱</span>
+      <span style="flex:1;font-size:13px;font-weight:600;color:#c4b5fd">Rest</span>
+      <span id="rest-countdown">1:30</span>
+      <button class="rest-btn" style="background:#1e1e1e;color:#888;border:1px solid #333"
+        onclick="addRestTime(30)">+30s</button>
+      <button class="rest-btn" style="background:var(--purple);color:#fff"
+        onclick="stopRestTimer()">Skip</button>
+    </div>`);
+}
+
+function updateRestBar() {
+  ensureRestBar();
+  const bar = document.getElementById('rest-bar');
+  const cd  = document.getElementById('rest-countdown');
+  if (!bar || !cd) return;
+  if (state.restActive && state.restSecs > 0) {
+    bar.style.display = 'flex';
+    const m = Math.floor(state.restSecs / 60);
+    const s = (state.restSecs % 60).toString().padStart(2, '0');
+    cd.textContent = `${m}:${s}`;
+    cd.classList.toggle('urgent', state.restSecs <= 15);
+  } else {
+    bar.style.display = 'none';
   }
 }
 
@@ -651,9 +776,12 @@ function renderWorkout() {
     <div class="workout-header">
       <div class="wh-top">
         <div class="wh-name">${W.icon} ${W.shortName}</div>
-        <button class="must-toggle ${state.mustDoOnly?'on':''}" onclick="toggleMustDo()">
-          ${state.mustDoOnly ? '⭐ Must-Do Only' : '☆ Full Workout'}
-        </button>
+        <div style="display:flex;gap:7px;align-items:center">
+          <button id="rest-dur-btn" class="must-toggle" onclick="cycleRestDuration()" title="Tap to change rest duration">⏱ ${state.restDuration}s</button>
+          <button class="must-toggle ${state.mustDoOnly?'on':''}" onclick="toggleMustDo()">
+            ${state.mustDoOnly ? '⭐ Must-Do Only' : '☆ Full Workout'}
+          </button>
+        </div>
       </div>
       <div class="progress-bar">
         <div class="progress-fill" style="width:${pct}%"></div>
@@ -691,6 +819,30 @@ function getLastUsed(exerciseName) {
     if (ex) return { weight: ex.weight, reps: ex.actualReps };
   }
   return null;
+}
+
+function getBestWeight(exerciseName) {
+  let best = 0;
+  state.savedWorkouts.forEach(w => {
+    (w.exercises || []).forEach(ex => {
+      if (ex.name === exerciseName && ex.completed && ex.weight) {
+        const v = parseFloat(ex.weight);
+        if (v > best) best = v;
+      }
+    });
+  });
+  return best > 0 ? best : null;
+}
+
+function checkPR(id, value) {
+  const el = document.getElementById('pr-' + id);
+  if (!el) return;
+  const entered = parseFloat(value);
+  if (!entered) { el.style.display = 'none'; return; }
+  const ex = Object.values(WORKOUTS).flatMap(w => w.exercises).find(e => e.id === id);
+  if (!ex) return;
+  const best = getBestWeight(ex.name);
+  el.style.display = (best && entered > best) ? 'block' : 'none';
 }
 
 function renderExerciseCard(ex) {
@@ -744,21 +896,23 @@ function renderExerciseCard(ex) {
     const lastHint = last
       ? `<div style="font-size:11px;color:var(--purple-light);margin-bottom:6px;">↩ Last time: ${last.weight} lbs${last.reps ? ' × ' + last.reps + ' reps' : ''}</div>`
       : '';
+    const prBadge = `<div id="pr-${ex.id}" style="display:none;text-align:center;font-size:13px;font-weight:800;color:#fbbf24;background:#1f1a00;border:1px solid #fbbf24;border-radius:8px;padding:6px 10px;margin-bottom:8px;letter-spacing:.3px;">🏆 New PR!</div>`;
     inputsHtml = `
       <div class="ex-sets-label">${ex.sets} sets · Target: ${ex.suggestedReps} reps</div>
       ${lastHint}
       <div class="ex-inputs">
         <div class="ex-input-group">
           <label>Reps Done</label>
-          <input type="number" min="0" placeholder="${ex.suggestedReps.split('–')[0]}" value="${log.reps||''}"
+          <input type="number" min="0" value="${log.reps || ex.suggestedReps.split('–')[0]}"
             oninput="updateLog('${ex.id}','reps',this.value)">
         </div>
         <div class="ex-input-group">
           <label>Weight (lbs)</label>
           <input type="number" min="0" placeholder="${last ? last.weight + ' lbs' : 'lbs'}" value="${weightVal}"
-            oninput="updateLog('${ex.id}','weight',this.value)">
+            oninput="updateLog('${ex.id}','weight',this.value);checkPR('${ex.id}',this.value)">
         </div>
-      </div>`;
+      </div>
+      ${prBadge}`;
   }
 
   const typeBadge = ex.type === 'cardio' ? '<span class="badge badge-cardio">Cardio</span>'
@@ -794,7 +948,17 @@ function updateLog(id, field, value) {
 
 function toggleExerciseDone(id) {
   if (!state.logs[id]) state.logs[id] = {};
-  state.logs[id].completed = !state.logs[id].completed;
+  const wasDone = !!state.logs[id].completed;
+  state.logs[id].completed = !wasDone;
+
+  // Start rest timer when marking a strength exercise done
+  if (!wasDone) {
+    const ex = Object.values(WORKOUTS).flatMap(w => w.exercises).find(e => e.id === id);
+    if (ex && ex.type === 'strength') startRestTimer(state.restDuration);
+  } else {
+    stopRestTimer();
+  }
+
   render();
   document.getElementById('card-'+id)?.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
@@ -893,7 +1057,7 @@ async function saveWorkout() {
         type: ex.type,
         sets: ex.sets || null,
         suggestedReps: ex.suggestedReps || ex.suggestedTime || null,
-        actualReps: log.reps || null,
+        actualReps: log.reps || (ex.type === 'strength' ? ex.suggestedReps.split('–')[0] : null),
         weight: log.weight || null,
         time: log.time || null,
         speed: log.speed || null,
@@ -1043,6 +1207,22 @@ function toggleLogEntry(idx) {
 // ============================================================
 // STATS TAB
 // ============================================================
+function getSessionVolume(workout) {
+  let vol = 0;
+  (workout.exercises || []).forEach(ex => {
+    if (!ex.completed || !ex.weight || !ex.sets) return;
+    const reps = parseInt(ex.actualReps || ex.reps || 0);
+    if (!reps) return;
+    vol += parseFloat(ex.sets) * reps * parseFloat(ex.weight);
+  });
+  return Math.round(vol);
+}
+
+function fmtVolume(lbs) {
+  if (!lbs) return '—';
+  return lbs >= 1000 ? (lbs / 1000).toFixed(1) + 'k' : lbs.toString();
+}
+
 function renderStats() {
   const workouts = state.savedWorkouts;
   if (!workouts.length) {
@@ -1057,6 +1237,11 @@ function renderStats() {
   const avgDur = Math.round(totalMin / workouts.length);
   const avgEffort = workouts.filter(w=>w.effort).length
     ? (workouts.filter(w=>w.effort).reduce((a,w)=>a+w.effort,0) / workouts.filter(w=>w.effort).length).toFixed(1) : '—';
+
+  // Volume
+  const sessionVols = workouts.map(w => getSessionVolume(w));
+  const totalVol = sessionVols.reduce((a,v) => a+v, 0);
+  const hasVol = sessionVols.some(v => v > 0);
 
   // Get all logged strength exercises
   const allExercises = [...new Set(
@@ -1079,10 +1264,25 @@ function renderStats() {
         <div class="stat-box"><div class="stat-value">${avgEffort}</div><div class="stat-label">Avg Effort</div></div>
       </div>
 
+      ${hasVol ? `
+      <div style="background:var(--surface);border-radius:var(--radius);padding:14px;border:1px solid var(--border);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Total Volume Lifted</div>
+          <div style="font-size:28px;font-weight:800;color:#fbbf24">${fmtVolume(totalVol)} <span style="font-size:14px;color:var(--muted)">lbs</span></div>
+        </div>
+        <div style="font-size:36px">🏋️</div>
+      </div>` : ''}
+
       <div class="chart-container">
         <div class="chart-title">Sessions per Week</div>
         <canvas id="chart-sessions"></canvas>
       </div>
+
+      ${hasVol ? `
+        <div class="chart-container">
+          <div class="chart-title">Volume Per Session (lbs)</div>
+          <canvas id="chart-volume"></canvas>
+        </div>` : ''}
 
       ${allExercises.length ? `
         <div class="chart-container">
@@ -1123,6 +1323,39 @@ function initCharts() {
         datasets: [{ data: weekKeys.map(k=>weekMap[k]), backgroundColor:'#7c3aed', borderRadius:6 }]
       },
       options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1,color:'#888'},grid:{color:'#222'}},x:{ticks:{color:'#888'},grid:{color:'#222'}}}}
+    });
+  }
+
+  // Volume per session
+  const recent10 = workouts.slice(-10);
+  const volPts = recent10.map(w => ({
+    date: new Date(w.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+    vol: getSessionVolume(w)
+  })).filter(p => p.vol > 0);
+  const ctx4 = document.getElementById('chart-volume');
+  if (ctx4 && volPts.length) {
+    if (Chart.getChart(ctx4)) Chart.getChart(ctx4).destroy();
+    new Chart(ctx4, {
+      type: 'line',
+      data: {
+        labels: volPts.map(p => p.date),
+        datasets: [{
+          data: volPts.map(p => p.vol),
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,.12)',
+          fill: true,
+          tension: .3,
+          pointRadius: 4,
+          pointBackgroundColor: '#fbbf24'
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { color:'#888', callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v }, grid: { color:'#222' } },
+          x: { ticks: { color:'#888' }, grid: { color:'#222' } }
+        }
+      }
     });
   }
 
