@@ -430,8 +430,33 @@ async function loadFromSheets() {
   if (syncEl) { syncEl.textContent = '☁️ Loading...'; syncEl.style.color = '#fbbf24'; }
   try {
     const resp = await fetch(SHEETS_URL);
-    const workouts = await resp.json();
-    if (Array.isArray(workouts) && workouts.length) {
+    const json = await resp.json();
+
+    // Handle both response shapes:
+    //   plain array:          [{date, plan, ...}, ...]
+    //   wrapped object:       {success:true, workouts:[...]}
+    const raw = Array.isArray(json) ? json : (json.workouts || []);
+
+    if (raw.length) {
+      // Normalize to the app's internal format regardless of which
+      // Apps Script version produced the data
+      const workouts = raw.map(w => ({
+        date:     w.date     || '',
+        plan:     w.plan     || '',
+        duration: parseInt(w.duration || w.durationMin || 0) || 0,
+        effort:   parseInt(w.effort   || 0) || 0,
+        notes:    w.notes    || '',
+        exercises: (w.exercises || []).map(ex => ({
+          name:         ex.name || '',
+          sets:         ex.sets         ? parseInt(ex.sets)         : null,
+          suggestedReps:ex.suggestedReps != null ? String(ex.suggestedReps) : null,
+          actualReps:   ex.actualReps || ex.reps || null,
+          weight:       ex.weight       ? parseFloat(ex.weight)     : null,
+          time:         ex.time         ? parseFloat(ex.time)       : null,
+          completed:    ex.completed === true || ex.completed === 'Yes'
+        }))
+      }));
+
       state.savedWorkouts = workouts;
       saveWorkoutsLocal();
       render();
