@@ -191,7 +191,7 @@
     <div id="hdr-title">💪 PF Tracker</div>
     <div id="hdr-right" style="display:flex;align-items:center;gap:8px;">
       <div id="hdr-timer" style="display:none;cursor:pointer;border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:15px;font-weight:700;" onclick="toggleTimer()" title="Tap to start / pause timer"></div>
-      <div id="hdr-sync"></div>
+      <div id="hdr-sync" onclick="loadFromSheets()" title="Tap to sync from cloud" style="cursor:pointer;min-width:20px;text-align:right"></div>
     </div>
   </header>
   <main id="main"></main>
@@ -423,6 +423,30 @@ function saveWorkoutsLocal() {
 }
 
 // ============================================================
+// CLOUD SYNC — Load history back from Google Sheets
+// ============================================================
+async function loadFromSheets() {
+  const syncEl = document.getElementById('hdr-sync');
+  if (syncEl) { syncEl.textContent = '☁️ Loading...'; syncEl.style.color = '#fbbf24'; }
+  try {
+    const resp = await fetch(SHEETS_URL);
+    const workouts = await resp.json();
+    if (Array.isArray(workouts) && workouts.length) {
+      state.savedWorkouts = workouts;
+      saveWorkoutsLocal();
+      render();
+      if (syncEl) { syncEl.textContent = '✓ Synced'; syncEl.style.color = '#22c55e'; setTimeout(() => { if(syncEl) syncEl.textContent = ''; }, 3000); }
+      return true;
+    } else {
+      if (syncEl) { syncEl.textContent = 'No cloud data'; syncEl.style.color = '#888'; setTimeout(() => { if(syncEl) syncEl.textContent = ''; }, 3000); }
+    }
+  } catch(e) {
+    if (syncEl) { syncEl.textContent = '⚠ Sync failed'; syncEl.style.color = '#ef4444'; setTimeout(() => { if(syncEl) syncEl.textContent = ''; }, 3000); }
+  }
+  return false;
+}
+
+// ============================================================
 // TIMER
 // ============================================================
 function startTimer() {
@@ -533,6 +557,9 @@ function renderHome() {
     </div>` : `
     <div class="last-workout" style="text-align:center;color:var(--muted);font-size:13px;padding:20px">
       No workouts logged yet — pick a day below and get started!
+      <div style="margin-top:14px">
+        <button onclick="loadFromSheets()" class="btn btn-secondary btn-sm" style="width:auto;margin:0 auto">☁️ Restore from Cloud</button>
+      </div>
     </div>`;
 
   const resumeBanner = state.activeDay ? `
@@ -1114,6 +1141,11 @@ function initCharts() {
 // INIT
 // ============================================================
 render();
+
+// Auto-load from Sheets if no local data exists
+if (!state.savedWorkouts.length) {
+  loadFromSheets();
+}
 </script>
 </body>
 </html>
