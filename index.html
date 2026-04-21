@@ -914,10 +914,10 @@ function renderMachineDetail(m) {
   const photoSection = photoKey ? `
     <div class="machine-photo-wrap" id="${photoId}">
       <img
-        src="./img/${photoKey}.jpg"
+        src="./${photoKey}.jpg"
         alt="${m.name} at Planet Fitness"
         class="machine-photo"
-        onerror="var img=this;if(img.src.indexOf('.jpg')>-1){img.src=img.src.replace('.jpg','.png');}else{var el=document.getElementById('${photoId}');if(el){el.innerHTML='<div class=\\'machine-photo-placeholder\\'><div class=\\'ph-icon\\'>📷</div><div>No photo yet — upload img/${photoKey}.jpg to GitHub</div></div>';el.style.overflow='visible';}}"
+        onerror="var img=this;if(img.src.indexOf('.jpg')>-1){img.src=img.src.replace('.jpg','.png');}else{var el=document.getElementById('${photoId}');if(el){el.innerHTML='<div class=\\'machine-photo-placeholder\\'><div class=\\'ph-icon\\'>📷</div><div>No photo yet — upload ${photoKey}.jpg to GitHub</div></div>';el.style.overflow='visible';}}"
       >
     </div>` : '';
   return `
