@@ -173,6 +173,11 @@
     .select-input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 13px; width: 100%; margin-bottom: 12px; }
     canvas { max-height: 200px; }
 
+    /* ── SET-BY-SET LOGGING ── */
+    .sets-table { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .set-row { display: grid; grid-template-columns: 40px 1fr 1fr; gap: 8px; align-items: end; }
+    .set-num { font-size: 11px; font-weight: 700; color: var(--muted); text-align: center; padding-bottom: 10px; }
+
     /* ── REST TIMER BAR ── */
     #rest-bar {
       position: fixed;
@@ -235,6 +240,7 @@
 // CONFIG
 // ============================================================
 const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbysLIZGlH3OD7YVQZoZpKD3jDaEWM5s80oaMX53lZjLjQ0pPbbhIABJA_7jMAHcPho/exec';
+const WEEK_GOAL = 4; // target workout days per 7-day window
 
 // ============================================================
 // WORKOUT DATA
@@ -675,6 +681,44 @@ function render() {
 // ============================================================
 // HOME TAB
 // ============================================================
+function dayKey(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function getStreak() {
+  if (!state.savedWorkouts.length) return 0;
+  const workoutDays = new Set(state.savedWorkouts.map(w => dayKey(w.date)));
+  const today = new Date();
+  const todayKey = dayKey(today);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yestKey = dayKey(yesterday);
+  // Streak is alive if worked out today OR yesterday (give grace for today)
+  if (!workoutDays.has(todayKey) && !workoutDays.has(yestKey)) return 0;
+  const startOffset = workoutDays.has(todayKey) ? 0 : 1;
+  let streak = 0;
+  for (let i = startOffset; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    if (workoutDays.has(dayKey(d))) { streak++; } else { break; }
+  }
+  return streak;
+}
+
+function getLast7Count() {
+  if (!state.savedWorkouts.length) return 0;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 6);
+  cutoff.setHours(0, 0, 0, 0);
+  const days = new Set(
+    state.savedWorkouts
+      .filter(w => new Date(w.date) >= cutoff)
+      .map(w => dayKey(w.date))
+  );
+  return days.size;
+}
+
 function getTodaySchedule() {
   const dow = new Date().getDay(); // 0=Sun
   const map = { 0:'OFF', 1:'A', 2:'OFF', 3:'B', 4:'OFF', 5:'A', 6:'B' };
@@ -692,10 +736,9 @@ function getDayType(dow) {
 function renderHome() {
   const last = state.savedWorkouts[state.savedWorkouts.length - 1];
   const totalSessions = state.savedWorkouts.length;
-  const thisWeek = state.savedWorkouts.filter(w => {
-    const diff = (Date.now() - new Date(w.date).getTime()) / (1000*60*60*24);
-    return diff < 7;
-  }).length;
+  const streak = getStreak();
+  const last7 = getLast7Count();
+  const goalMet = last7 >= WEEK_GOAL;
 
   const lastHtml = last ? `
     <div class="section-title" style="margin-top:4px">Last Workout</div>
@@ -739,8 +782,29 @@ function renderHome() {
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-        <div class="stat-box"><div class="stat-value">${totalSessions}</div><div class="stat-label">Total Sessions</div></div>
-        <div class="stat-box"><div class="stat-value">${thisWeek}</div><div class="stat-label">This Week</div></div>
+
+        <!-- Streak -->
+        <div class="stat-box">
+          <div style="font-size:26px;font-weight:800;color:${streak > 0 ? '#f97316' : 'var(--muted)'}">
+            ${streak > 0 ? '🔥 ' + streak : '0'}
+          </div>
+          <div class="stat-label" style="margin-top:2px">Day Streak</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">${totalSessions} total sessions</div>
+        </div>
+
+        <!-- 7-day goal -->
+        <div class="stat-box">
+          <div style="display:flex;align-items:baseline;gap:3px;justify-content:center">
+            <div style="font-size:26px;font-weight:800;color:${goalMet ? 'var(--success)' : 'var(--text)'}">${last7}</div>
+            <div style="font-size:13px;color:var(--muted)">/ 7</div>
+          </div>
+          <div class="stat-label" style="margin-top:2px">Days This Week</div>
+          <div style="height:4px;background:var(--surface2);border-radius:2px;margin-top:8px;overflow:hidden">
+            <div style="height:100%;width:${Math.min(last7 / WEEK_GOAL * 100, 100)}%;background:${goalMet ? 'var(--success)' : 'var(--purple)'};border-radius:2px;transition:width .3s"></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">Goal: ${WEEK_GOAL} days</div>
+        </div>
+
       </div>
 
       ${lastHtml}
@@ -814,9 +878,20 @@ function renderWorkoutPicker() {
 function getLastUsed(exerciseName) {
   for (let i = state.savedWorkouts.length - 1; i >= 0; i--) {
     const ex = (state.savedWorkouts[i].exercises || []).find(e =>
-      e.name === exerciseName && e.completed && e.weight
+      e.name === exerciseName && e.completed
     );
-    if (ex) return { weight: ex.weight, reps: ex.actualReps };
+    if (!ex) continue;
+    // New format: sets array
+    if (Array.isArray(ex.sets) && ex.sets.length) {
+      const withWeight = ex.sets.filter(s => s.weight);
+      if (withWeight.length) {
+        const avgW = withWeight.reduce((a,s) => a + parseFloat(s.weight), 0) / withWeight.length;
+        const avgR = withWeight.reduce((a,s) => a + (parseInt(s.reps) || 0), 0) / withWeight.length;
+        return { weight: Math.round(avgW * 2) / 2, reps: Math.round(avgR) };
+      }
+    }
+    // Old format: single weight/reps
+    if (ex.weight) return { weight: ex.weight, reps: ex.actualReps };
   }
   return null;
 }
@@ -825,24 +900,45 @@ function getBestWeight(exerciseName) {
   let best = 0;
   state.savedWorkouts.forEach(w => {
     (w.exercises || []).forEach(ex => {
-      if (ex.name === exerciseName && ex.completed && ex.weight) {
-        const v = parseFloat(ex.weight);
-        if (v > best) best = v;
+      if (ex.name !== exerciseName || !ex.completed) return;
+      if (Array.isArray(ex.sets)) {
+        ex.sets.forEach(s => { const v = parseFloat(s.weight||0); if (v > best) best = v; });
+      } else if (ex.weight) {
+        const v = parseFloat(ex.weight); if (v > best) best = v;
       }
     });
   });
   return best > 0 ? best : null;
 }
 
-function checkPR(id, value) {
+function checkPR(id) {
   const el = document.getElementById('pr-' + id);
   if (!el) return;
-  const entered = parseFloat(value);
-  if (!entered) { el.style.display = 'none'; return; }
+  const sets = state.logs[id]?.sets || [];
+  const maxEntered = Math.max(0, ...sets.map(s => parseFloat(s.weight) || 0));
+  if (!maxEntered) { el.style.display = 'none'; return; }
   const ex = Object.values(WORKOUTS).flatMap(w => w.exercises).find(e => e.id === id);
   if (!ex) return;
   const best = getBestWeight(ex.name);
-  el.style.display = (best && entered > best) ? 'block' : 'none';
+  el.style.display = (best && maxEntered > best) ? 'block' : 'none';
+}
+
+function initExerciseSets(ex) {
+  if (state.logs[ex.id]?.sets) return; // already initialized
+  if (!state.logs[ex.id]) state.logs[ex.id] = {};
+  const last = getLastUsed(ex.name);
+  const defReps = last?.reps ? String(Math.round(parseFloat(last.reps)))
+                             : ex.suggestedReps.split('–')[0];
+  const defWeight = last?.weight ? String(last.weight) : '';
+  state.logs[ex.id].sets = Array.from({ length: ex.sets || 3 }, () =>
+    ({ reps: defReps, weight: defWeight })
+  );
+}
+
+function updateSetLog(id, idx, field, value) {
+  if (!state.logs[id]?.sets) return;
+  state.logs[id].sets[idx][field] = value;
+  if (field === 'weight') checkPR(id);
 }
 
 function renderExerciseCard(ex) {
@@ -896,22 +992,26 @@ function renderExerciseCard(ex) {
     const lastHint = last
       ? `<div style="font-size:11px;color:var(--purple-light);margin-bottom:6px;">↩ Last time: ${last.weight} lbs${last.reps ? ' × ' + last.reps + ' reps' : ''}</div>`
       : '';
+    initExerciseSets(ex);
+    const setRows = (state.logs[ex.id].sets || []).map((s, idx) => `
+      <div class="set-row">
+        <div class="set-num">S${idx+1}</div>
+        <div class="ex-input-group">
+          <label>Reps</label>
+          <input type="number" min="0" value="${s.reps}"
+            oninput="updateSetLog('${ex.id}',${idx},'reps',this.value)">
+        </div>
+        <div class="ex-input-group">
+          <label>Weight (lbs)</label>
+          <input type="number" min="0" value="${s.weight}" placeholder="${last ? last.weight : 'lbs'}"
+            oninput="updateSetLog('${ex.id}',${idx},'weight',this.value)">
+        </div>
+      </div>`).join('');
     const prBadge = `<div id="pr-${ex.id}" style="display:none;text-align:center;font-size:13px;font-weight:800;color:#fbbf24;background:#1f1a00;border:1px solid #fbbf24;border-radius:8px;padding:6px 10px;margin-bottom:8px;letter-spacing:.3px;">🏆 New PR!</div>`;
     inputsHtml = `
       <div class="ex-sets-label">${ex.sets} sets · Target: ${ex.suggestedReps} reps</div>
       ${lastHint}
-      <div class="ex-inputs">
-        <div class="ex-input-group">
-          <label>Reps Done</label>
-          <input type="number" min="0" value="${log.reps || ex.suggestedReps.split('–')[0]}"
-            oninput="updateLog('${ex.id}','reps',this.value)">
-        </div>
-        <div class="ex-input-group">
-          <label>Weight (lbs)</label>
-          <input type="number" min="0" placeholder="${last ? last.weight + ' lbs' : 'lbs'}" value="${weightVal}"
-            oninput="updateLog('${ex.id}','weight',this.value);checkPR('${ex.id}',this.value)">
-        </div>
-      </div>
+      <div class="sets-table">${setRows}</div>
       ${prBadge}`;
   }
 
@@ -1052,12 +1152,21 @@ async function saveWorkout() {
     notes: state.notes,
     exercises: exercises.map(ex => {
       const log = state.logs[ex.id] || {};
+      if (ex.type === 'strength' && log.sets) {
+        return {
+          name: ex.name,
+          type: ex.type,
+          sets: log.sets,             // array of {reps, weight}
+          suggestedReps: ex.suggestedReps || null,
+          completed: log.completed || false
+        };
+      }
       return {
         name: ex.name,
         type: ex.type,
         sets: ex.sets || null,
         suggestedReps: ex.suggestedReps || ex.suggestedTime || null,
-        actualReps: log.reps || (ex.type === 'strength' ? ex.suggestedReps.split('–')[0] : null),
+        actualReps: log.reps || null,
         weight: log.weight || null,
         time: log.time || null,
         speed: log.speed || null,
@@ -1185,15 +1294,23 @@ function renderLog() {
         ${isExpanded ? `
           <div class="le-exercises">
             ${w.notes ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-style:italic">"${w.notes}"</div>` : ''}
-            ${(w.exercises||[]).filter(e=>e.completed).map(e => `
-              <div class="le-ex">
+            ${(w.exercises||[]).filter(e=>e.completed).map(e => {
+              let detail = '✓';
+              if (Array.isArray(e.sets) && e.sets.length) {
+                const ws = e.sets.map(s => s.weight ? `${s.weight}lbs×${s.reps||'?'}` : null).filter(Boolean);
+                detail = ws.length ? ws.join(' / ') : '✓';
+              } else if (e.weight) {
+                detail = `${e.weight}lbs × ${e.actualReps||'?'} reps`;
+              } else if (e.time) {
+                detail = `${e.time} min`;
+              } else if (e.actualReps) {
+                detail = `${e.actualReps} reps`;
+              }
+              return `<div class="le-ex">
                 <span class="le-ex-name">${e.name}</span>
-                <span class="le-ex-data">${
-                  e.weight ? `${e.weight}lbs × ${e.actualReps||'?'} reps` :
-                  e.time ? `${e.time} min` :
-                  e.actualReps ? `${e.actualReps} reps` : '✓'
-                }</span>
-              </div>`).join('')}
+                <span class="le-ex-data" style="font-size:11px">${detail}</span>
+              </div>`;
+            }).join('')}
           </div>` : ''}
       </div>`;
     }).join('') + '</div>';
@@ -1210,10 +1327,16 @@ function toggleLogEntry(idx) {
 function getSessionVolume(workout) {
   let vol = 0;
   (workout.exercises || []).forEach(ex => {
-    if (!ex.completed || !ex.weight || !ex.sets) return;
-    const reps = parseInt(ex.actualReps || ex.reps || 0);
-    if (!reps) return;
-    vol += parseFloat(ex.sets) * reps * parseFloat(ex.weight);
+    if (!ex.completed) return;
+    if (Array.isArray(ex.sets)) {
+      ex.sets.forEach(s => {
+        const r = parseInt(s.reps || 0), w = parseFloat(s.weight || 0);
+        if (r && w) vol += r * w;
+      });
+    } else if (ex.weight && ex.sets && (ex.actualReps || ex.reps)) {
+      const reps = parseInt(ex.actualReps || ex.reps || 0);
+      if (reps) vol += parseFloat(ex.sets) * reps * parseFloat(ex.weight);
+    }
   });
   return Math.round(vol);
 }
@@ -1359,11 +1482,20 @@ function initCharts() {
     });
   }
 
-  // Weight progress for selected exercise
+  // Weight progress for selected exercise (handles both old + new sets format)
   if (state.statsExercise) {
     const pts = workouts.flatMap(w =>
-      (w.exercises||[]).filter(e=>e.name===state.statsExercise && e.weight && e.completed)
-        .map(e => ({ date: new Date(w.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}), weight: parseFloat(e.weight) }))
+      (w.exercises||[]).filter(e=>e.name===state.statsExercise && e.completed)
+        .map(e => {
+          let weight = null;
+          if (Array.isArray(e.sets) && e.sets.length) {
+            const ws = e.sets.map(s=>parseFloat(s.weight)||0).filter(Boolean);
+            if (ws.length) weight = Math.max(...ws);
+          } else if (e.weight) {
+            weight = parseFloat(e.weight);
+          }
+          return weight ? { date: new Date(w.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}), weight } : null;
+        }).filter(Boolean)
     );
     const ctx2 = document.getElementById('chart-weight');
     if (ctx2 && pts.length) {
