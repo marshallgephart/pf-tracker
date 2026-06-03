@@ -96,6 +96,11 @@
     .progress-fill { height: 100%; background: var(--purple); border-radius: 2px; transition: width .3s; }
     .ex-card { background: var(--surface); border-radius: var(--radius); padding: 14px; margin: 10px 12px; border: 1px solid var(--border); transition: border-color .2s; }
     .ex-card.completed { border-color: var(--success); opacity: .7; }
+    .ex-card.collapsed-done { padding: 10px 14px; cursor: pointer; opacity: .6; }
+    .ex-card.collapsed-done:active { opacity: .9; }
+    .collapsed-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .collapsed-row .cr-left { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--success); }
+    .collapsed-row .cr-expand { font-size: 12px; color: var(--muted); }
     .ex-card.must-card { border-left: 3px solid var(--purple); }
     .ex-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .ex-icon { font-size: 28px; flex-shrink: 0; }
@@ -441,6 +446,7 @@ let state = {
   effortRating: null,
   notes: '',
   expandedLog: null,       // index of expanded log entry
+  expandedDone: {},        // { exerciseId: true } — completed cards manually re-opened
   machineDetail: null,     // machine object
   statsExercise: '',
   savedWorkouts: loadWorkouts(),
@@ -1020,6 +1026,17 @@ function renderExerciseCard(ex) {
   const mustBadge = ex.must ? '<span class="badge badge-must">Must Do</span>' : '<span class="badge badge-optional">Optional</span>';
   const snowBadge = ex.snowboard ? '<span class="badge badge-snowboard">🏂 Snowboard</span>' : '';
 
+  // Collapsed view for completed exercises (unless manually re-opened)
+  if (done && !state.expandedDone[ex.id]) {
+    return `
+      <div class="ex-card completed collapsed-done ${ex.must?'must-card':''}" id="card-${ex.id}" onclick="toggleExpandDone('${ex.id}')">
+        <div class="collapsed-row">
+          <div class="cr-left">${ex.emoji} ✓ ${ex.name}</div>
+          <div class="cr-expand">tap to edit ›</div>
+        </div>
+      </div>`;
+  }
+
   return `
     <div class="ex-card ${done?'completed':''} ${ex.must?'must-card':''}" id="card-${ex.id}">
       <div class="ex-header">
@@ -1046,10 +1063,23 @@ function updateLog(id, field, value) {
   state.logs[id][field] = value;
 }
 
+function toggleExpandDone(id) {
+  if (state.expandedDone[id]) {
+    delete state.expandedDone[id];
+  } else {
+    state.expandedDone[id] = true;
+  }
+  render();
+  document.getElementById('card-'+id)?.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
 function toggleExerciseDone(id) {
   if (!state.logs[id]) state.logs[id] = {};
   const wasDone = !!state.logs[id].completed;
   state.logs[id].completed = !wasDone;
+
+  // Collapse when marking done, remove from expanded when unmarking
+  delete state.expandedDone[id];
 
   // Start rest timer when marking a strength exercise done
   if (!wasDone) {
